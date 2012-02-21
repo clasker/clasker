@@ -54,9 +54,9 @@
   (let ((position (point))
         (inhibit-read-only t))
     (erase-buffer)
-    (clasker-load-tasks)
+    (setq clasker-tasks (clasker-load-tasks))
     (insert (propertize "Clasker\n" 'face 'info-title-1) "\n")
-    (clasker-show-tasks (clasker-load-tasks))
+    (clasker-show-tasks clasker-tasks)
     (goto-char (min position (point-max)))))
 
 (defun clasker-quit ()
@@ -72,11 +72,11 @@
 
 (defun clasker-delete-task ()
   (interactive)
-  (when (yes-or-no-p "Do you want to delete this task? ")
-    (let ((task (get-text-property (point) 'clasker-task)))
-      (setq clasker-tasks (remove task clasker-tasks)))
-    (clasker-save-tasks)
-    (clasker-revert)))
+  (let ((task (get-text-property (point) 'clasker-task)))
+    (when (and task (yes-or-no-p "Do you want to delete this task? "))
+      (setq clasker-tasks (delq task clasker-tasks))
+      (clasker-save-tasks)
+      (clasker-revert))))
 
 (defun clasker-next-task ()
   (interactive)
