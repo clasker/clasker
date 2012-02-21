@@ -35,7 +35,7 @@
 
 (defun clasker-show-tasks (list)
   (dolist (title list)
-    (insert title "\n")))
+    (insert (propertize title 'clasker-task title) "\n")))
 
 (defun clasker-load-tasks (&optional filename)
   (let ((filename (or filename clasker-file)))
@@ -50,12 +50,13 @@
     (prin1 clasker-tasks #'insert)))
 
 (defun clasker-revert (&optional ignore-auto noconfirm)
-  (widen)
-  (let ((inhibit-read-only t))
-    (erase-buffer)
-    (clasker-load-tasks)
-    (insert (propertize "Clasker\n\n" 'face 'bold))
-    (clasker-show-tasks (clasker-get-tasks))))
+  (save-excursion
+    (widen)
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (clasker-load-tasks)
+      (insert (propertize "Clasker\n\n" 'face 'bold))
+      (clasker-show-tasks (clasker-get-tasks)))))
 
 (defun clasker-quit ()
   (interactive)
@@ -68,10 +69,18 @@
   (clasker-save-tasks)
   (clasker-revert))
 
+(defun clasker-delete-task ()
+  (interactive)
+  (let ((task (get-text-property (point) 'clasker-task)))
+    (delq task clasker-tasks))
+  (clasker-save-tasks)
+  (clasker-revert))
+
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "g") 'revert-buffer)
     (define-key map (kbd "c") 'clasker-new-task)
+    (define-key map (kbd "k") 'clasker-delete-task)
     (define-key map (kbd "q") 'clasker-quit)
     (define-key map (kbd "n") 'next-line)
     (define-key map (kbd "p") 'previous-line)
