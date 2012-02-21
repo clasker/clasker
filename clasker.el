@@ -35,7 +35,7 @@
 
 (defun clasker-show-tasks (list)
   (dolist (title list)
-    (insert (propertize title 'clasker-task title) "\n")))
+    (insert (propertize (concat title "\n") 'clasker-task title))))
 
 (defun clasker-load-tasks (&optional filename)
   (let ((filename (or filename clasker-file)))
@@ -77,14 +77,24 @@
   (clasker-save-tasks)
   (clasker-revert))
 
+(defun clasker-next-task ()
+  (interactive)
+  (let ((position (next-single-property-change (point) 'clasker-task)))
+    (and position (goto-char position))))
+
+(defun clasker-previous-task ()
+  (interactive)
+  (let ((position (previous-single-property-change (point) 'clasker-task)))
+    (and position (goto-char position))))
+
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "g") 'revert-buffer)
     (define-key map (kbd "c") 'clasker-new-task)
     (define-key map (kbd "k") 'clasker-delete-task)
     (define-key map (kbd "q") 'clasker-quit)
-    (define-key map (kbd "n") 'next-line)
-    (define-key map (kbd "p") 'previous-line)
+    (define-key map (kbd "n") 'clasker-next-task)
+    (define-key map (kbd "p") 'clasker-previous-task)
     map)
   "docstring")
 
