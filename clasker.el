@@ -56,7 +56,7 @@
     (erase-buffer)
     (clasker-load-tasks)
     (insert (propertize "Clasker\n" 'face 'info-title-1) "\n")
-    (clasker-show-tasks (clasker-get-tasks))
+    (clasker-show-tasks (clasker-load-tasks))
     (goto-char (min position (point-max)))))
 
 (defun clasker-quit ()
