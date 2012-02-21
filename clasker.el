@@ -64,7 +64,7 @@
 
 (defun clasker-new-task ()
   (interactive)
-  (let ((task-desc (read-string "Description:")))
+  (let ((task-desc (read-string "Description: ")))
     (push task-desc clasker-tasks))
   (clasker-save-tasks)
   (clasker-revert))
