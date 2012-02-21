@@ -74,7 +74,7 @@
   (interactive)
   (when (yes-or-no-p "Do you want to delete this task? ")
     (let ((task (get-text-property (point) 'clasker-task)))
-      (remove task clasker-tasks))
+      (setq clasker-tasks (remove task clasker-tasks)))
     (clasker-save-tasks)
     (clasker-revert)))
 
