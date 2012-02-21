@@ -30,7 +30,7 @@
 (defcustom clasker-file "~/.clasker"
   "File where clasker file tasks are")
 
-(defvar clasker-tasks '()
+(defvar clasker-tasks nil
   "tasks")
 
 (defun clasker-show-tasks (list)
@@ -39,26 +39,25 @@
       (insert title "\n")
       (incf n))))
 
+(defun clasker-load-tasks (&optional filename)
+  (let ((filename (or filename clasker-file)))
+    (when (file-readable-p filename)
+      (with-temp-buffer
+        (insert-file-contents filename)
+        (read (current-buffer))))))
+
+(defun clasker-save-tasks (&optional filename)
+  (with-temp-file (or filename clasker-file)
+    (insert ";; This file is genearted automatically. Do NOT edit!\n")
+    (prin1 clasker-tasks #'insert)))
+
 (defun clasker-revert (&optional ignore-auto noconfirm)
-  ""
   (widen)
   (let ((inhibit-read-only t))
     (erase-buffer)
+    (clasker-load-tasks)
     (insert (propertize "Clasker\n\n" 'face 'bold))
     (clasker-show-tasks (clasker-get-tasks))))
-
-(defun clasker-get-tasks ()
-  (interactive)
-  (when (null clasker-tasks)
-    (setf clasker-tasks (read-process-file clasker-file)))
-  clasker-tasks)
-
-(defun read-process-file (file)
-  (when (file-readable-p file)
-    (with-temp-message "Loading tasks..."
-      (with-temp-buffer
-        (insert-file-contents file)
-        (read (current-buffer))))))
 
 (defun clasker-quit ()
   (interactive)
@@ -68,6 +67,7 @@
   (interactive)
   (let ((task-desc (read-string "Description:")))
     (push task-desc clasker-tasks))
+  (clasker-save-tasks)
   (clasker-revert))
 
 (defvar clasker-mode-map
@@ -79,8 +79,6 @@
     (define-key map (kbd "p") 'previous-line)
     map)
   "docstring")
-
-
 
 (define-derived-mode clasker-mode special-mode "Clasker"
   "docstring"
