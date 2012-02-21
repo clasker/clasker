@@ -72,7 +72,7 @@
 (defun clasker-delete-task ()
   (interactive)
   (let ((task (get-text-property (point) 'clasker-task)))
-    (delq task clasker-tasks))
+    (setf task (delq task clasker-tasks)))
   (clasker-save-tasks)
   (clasker-revert))
 
