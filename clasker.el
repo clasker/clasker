@@ -72,10 +72,11 @@
 
 (defun clasker-delete-task ()
   (interactive)
-  (let ((task (get-text-property (point) 'clasker-task)))
-    (setq clasker-tasks (delq task clasker-tasks)))
-  (clasker-save-tasks)
-  (clasker-revert))
+  (when (yes-or-no-p "Do you want to delete this task? ")
+    (let ((task (get-text-property (point) 'clasker-task)))
+      (setq clasker-tasks (delq task clasker-tasks)))
+    (clasker-save-tasks)
+    (clasker-revert)))
 
 (defun clasker-next-task ()
   (interactive)
