@@ -27,9 +27,11 @@
 (eval-when-compile
   (require 'cl))
 
-(defcustom *clasker-file* "~/.clasker" "File where clasker file tasks are")
+(defcustom clasker-file "~/.clasker"
+  "File where clasker file tasks are")
 
-(defvar *clasker-tasks* '() "tasks")
+(defvar clasker-tasks '()
+  "tasks")
 
 (defun clasker-show-tasks (list)
   (let ((n 0))
@@ -47,9 +49,9 @@
 
 (defun clasker-get-tasks ()
   (interactive)
-  (when (null *clasker-tasks*)
-    (setf *clasker-tasks* (read-process-file *clasker-file*)))
-  *clasker-tasks*)
+  (when (null clasker-tasks)
+    (setf clasker-tasks (read-process-file clasker-file)))
+  clasker-tasks)
 
 (defun read-process-file (file)
   (when (file-readable-p file)
@@ -65,7 +67,7 @@
 (defun clasker-new-task ()
   (interactive)
   (let ((task-desc (read-string "Description:")))
-    (push task-desc *clasker-tasks*))
+    (push task-desc clasker-tasks))
   (clasker-revert))
 
 (defvar clasker-mode-map
