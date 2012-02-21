@@ -50,13 +50,14 @@
     (prin1 clasker-tasks #'insert)))
 
 (defun clasker-revert (&optional ignore-auto noconfirm)
-  (save-excursion
-    (widen)
-    (let ((inhibit-read-only t))
-      (erase-buffer)
-      (clasker-load-tasks)
-      (insert (propertize "Clasker\n" 'face 'info-title-1) "\n")
-      (clasker-show-tasks (clasker-get-tasks)))))
+  (widen)
+  (let ((position (point))
+        (inhibit-read-only t))
+    (erase-buffer)
+    (clasker-load-tasks)
+    (insert (propertize "Clasker\n" 'face 'info-title-1) "\n")
+    (clasker-show-tasks (clasker-get-tasks))
+    (goto-char (min position (point-max)))))
 
 (defun clasker-quit ()
   (interactive)
