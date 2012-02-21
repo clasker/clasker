@@ -46,7 +46,7 @@
 
 (defun clasker-save-tasks (&optional filename)
   (with-temp-file (or filename clasker-file)
-    (insert ";; This file is genearted automatically. Do NOT edit!\n")
+    (insert ";; This file is generated automatically. Do NOT edit!\n")
     (prin1 clasker-tasks #'insert)))
 
 (defun clasker-revert (&optional ignore-auto noconfirm)
@@ -55,7 +55,7 @@
     (let ((inhibit-read-only t))
       (erase-buffer)
       (clasker-load-tasks)
-      (insert (propertize "Clasker\n\n" 'face 'bold))
+      (insert (propertize "Clasker\n" 'face 'info-title-1) "\n")
       (clasker-show-tasks (clasker-get-tasks)))))
 
 (defun clasker-quit ()
@@ -72,7 +72,7 @@
 (defun clasker-delete-task ()
   (interactive)
   (let ((task (get-text-property (point) 'clasker-task)))
-    (setf task (delq task clasker-tasks)))
+    (setq clasker-tasks (delq task clasker-tasks)))
   (clasker-save-tasks)
   (clasker-revert))
 
