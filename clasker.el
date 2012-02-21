@@ -34,10 +34,8 @@
   "tasks")
 
 (defun clasker-show-tasks (list)
-  (let ((n 0))
-    (dolist (title list)
-      (insert title "\n")
-      (incf n))))
+  (dolist (title list)
+    (insert title "\n")))
 
 (defun clasker-load-tasks (&optional filename)
   (let ((filename (or filename clasker-file)))
