@@ -31,6 +31,45 @@
 
 (defcustom clasker-file "~/.clasker"
   "File where clasker file tickets are")
+
+;;;; Actions
+
+(defun clasker-read-action (actions)
+  "Read an action from keyboard."
+  (save-excursion
+    (let ((window (split-window-vertically (- (window-height) 4)))
+          (value nil)
+          (finishp nil))
+      (with-selected-window window
+        (switch-to-buffer "*Clasker actions*" t)
+        (erase-buffer)
+        (insert "\nList of actions:")
+        (let ((count 0))
+          (dolist (action actions)
+            (insert (format "  [%d] " count))
+            (insert (propertize (car action) 'face 'italic))
+            (setq count (1+ count)))))
+      (while (not finishp)
+        (let ((c (let ((inhibit-quit t))
+                   (read-char-exclusive "Action: "))))
+          (cond
+           ((or (= c ?\C-g) (= c ?q))
+            (delete-window window)
+            (setq quit-flag t))
+           ((and (<= ?0 c) (<= c ?9))
+            (let ((n (string-to-number (string c))))
+              (when (<= n (length actions))
+                (setq value (cdr (nth n actions)))
+                (setq finishp t)))))))
+      (delete-window window)
+      value)))
+
+;;; Example of usage
+
+;; (clasker-read-action
+;;  '(("Finish" . 0)
+;;    ("Cancel" . 1)))
+
 
 
 ;;;; Tickets
