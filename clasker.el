@@ -149,15 +149,12 @@
       (comp hours 3600)
       (comp minutes 60))
     (with-output-to-string
-      (loop with count = 0
-            for name across "ydhms"
-            for value in (list years days hours minutes seconds)
-            while (< count 2)
-            when (/= 0 value) do
-            (progn
-              (when (<= 1 count) (princ " "))
-              (princ (format "%2d%c" value name))
-              (incf count))))))
+      (do ((names '("y" "d" "h" "m" "s") (cdr names))
+           (values (list years days hours minutes seconds) (cdr values)))
+          ((/= 0 (car values))
+           (princ (format "%2d%s" (car values) (car names)))
+           (unless (zerop (cadr values))
+             (princ (format "%3d%s" (cadr values) (cadr names)))))))))
 
 
 (defun clasker-show-ticket (ticket)
