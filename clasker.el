@@ -29,8 +29,15 @@
 
 (require 'eieio)
 
+(defgroup clasker nil
+  "Experimental task management."
+  :prefix "clasker-"
+  :group 'applications)
+
 (defcustom clasker-file "~/.clasker"
-  "File where clasker file tickets are")
+  "File where clasker file tickets are"
+  :type 'file
+  :group 'clasker)
 
 
 ;;;; Tickets
@@ -130,27 +137,27 @@
 
 (defun clasker-format-seconds (seconds)
   "Format a number of seconds in a readable way."
-  (unless (zerop seconds)
-    (let (years days hours minutes)
-      (macrolet ((comp (var n)
-                       `(progn
-                          (setq ,var (truncate (/ seconds ,n)))
-                          (setq seconds (rem* seconds ,n)))))
-        (comp years 31536000)
-        (comp days 86400)
-        (comp hours 3600)
-        (comp minutes 60))
-      (with-output-to-string
-        (loop with count = 0
-              for name across "ydhms"
-              for value in (list years days hours minutes seconds)
-              while (< count 2)
-              when (/= 0 value) do
-              (progn
-                (when (<= 1 count) (princ " "))
-                (princ (format "%2d%c" value name))
-                (incf count)))))))
-
+  (unless (plusp seconds)
+    (error "%a is not a possitive number." seconds))
+  (let (years days hours minutes)
+    (macrolet ((comp (var n)
+                     `(progn
+                        (setq ,var (truncate (/ seconds ,n)))
+                        (setq seconds (mod seconds ,n)))))
+      (comp years 31536000)
+      (comp days 86400)
+      (comp hours 3600)
+      (comp minutes 60))
+    (with-output-to-string
+      (loop with count = 0
+            for name across "ydhms"
+            for value in (list years days hours minutes seconds)
+            while (< count 2)
+            when (/= 0 value) do
+            (progn
+              (when (<= 1 count) (princ " "))
+              (princ (format "%2d%c" value name))
+              (incf count))))))
 
 
 (defun clasker-show-ticket (ticket)
@@ -158,8 +165,9 @@
         (timestring
          (let ((secs (clasker-ticket-ago ticket)))
            (if secs (clasker-format-seconds secs) ""))))
-    (insert (propertize (concat description
-                                (make-string (- (window-width) (length description) (length timestring) 1) ?\s)
+    (insert (propertize (concat "  "
+                                description
+                                (make-string (- (window-width) (length description) (length timestring) 3) ?\s)
                                 timestring
                                 "\n")
                         'clasker-ticket ticket))))
@@ -189,7 +197,7 @@
   (interactive)
   (let (end)
     (while (not end)
-      (let ((description (read-input "Description (or RET to finish): " nil nil :no-more-input)))
+      (let ((description (read-string "Description (or RET to finish): " nil nil :no-more-input)))
         (if (eq description :no-more-input)
             (setf end t)
           (push `((description . ,description)
