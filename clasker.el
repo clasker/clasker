@@ -60,6 +60,7 @@
                    (read-char-exclusive "Action: "))))
           (cond
            ((or (= c ?\C-g) (= c ?q))
+            (kill-buffer buffer)
             (delete-window window)
             (setq quit-flag t))
            ((and (<= ?0 c) (<= c ?9))
