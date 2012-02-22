@@ -45,7 +45,10 @@
            (if timestamp
                (format-seconds "%dd %hh %ss%z" (truncate (float-time (time-subtract (current-time) timestamp))))
              ""))))
-    (insert (propertize (format "%s%60s\n" description duration)
+    (insert (propertize (concat description
+                                (make-string (- (window-width) (length description) (length duration) 1) ?\s)
+                                duration
+                                "\n")
                         'clasker-ticket ticket))))
 
 (defun clasker-show-tickets (list)
