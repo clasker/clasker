@@ -39,9 +39,10 @@
   (save-excursion
     (let ((window (split-window-vertically (- (window-height) 4)))
           (value nil)
-          (finishp nil))
+          (finishp nil)
+          (buffer (generate-new-buffer "*Clasker actions*")))
       (with-selected-window window
-        (switch-to-buffer "*Clasker actions*" t)
+        (switch-to-buffer buffer t)
         (erase-buffer)
         (insert "\nList of actions:")
         (let ((count 0))
@@ -61,6 +62,7 @@
               (when (<= n (length actions))
                 (setq value (cdr (nth n actions)))
                 (setq finishp t)))))))
+      (kill-buffer buffer)
       (delete-window window)
       value)))
 
