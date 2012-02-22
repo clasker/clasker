@@ -34,6 +34,8 @@
 
 ;;;; Actions
 
+(defvar clasker-inhibit-confirm nil)
+
 (defun clasker-read-action (actions)
   "Read an action from keyboard."
   (save-excursion
@@ -65,13 +67,6 @@
       (kill-buffer buffer)
       (delete-window window)
       value)))
-
-;;; Example of usage
-
-;; (clasker-read-action
-;;  '(("Finish" . 0)
-;;    ("Cancel" . 1)))
-
 
 
 ;;;; Tickets
@@ -141,7 +136,9 @@
 (defun clasker-delete-ticket ()
   (interactive)
   (let ((ticket (get-text-property (point) 'clasker-ticket)))
-    (when (and ticket (yes-or-no-p "Do you want to delete this ticket? "))
+    (when (and ticket
+               (or clasker-inhibit-confirm
+                   (yes-or-no-p "Do you want to delete this ticket? ")))
       (setq clasker-tickets (delq ticket clasker-tickets))
       (clasker-save-tickets)
       (clasker-render))))
@@ -156,6 +153,15 @@
   (let ((position (previous-single-property-change (point) 'clasker-ticket)))
     (and position (goto-char position))))
 
+(defun clasker-do ()
+  (interactive)
+  (let ((ticket (get-text-property (point) 'clasker-ticket))
+        (clasker-inhibit-confirm t))
+    (when ticket
+      (let ((action
+             (clasker-read-action '(("Delete" . clasker-delete-ticket)))))
+        (and action (call-interactively action))))))
+
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "g") 'revert-buffer)
@@ -164,6 +170,7 @@
     (define-key map (kbd "q") 'clasker-quit)
     (define-key map (kbd "n") 'clasker-next-ticket)
     (define-key map (kbd "p") 'clasker-previous-ticket)
+    (define-key map (kbd "RET") 'clasker-do)
     map)
   "docstring")
 
