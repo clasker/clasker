@@ -78,13 +78,39 @@
 (defvar clasker-tickets nil
   "tickets")
 
+(defun clasker-format-seconds (seconds)
+  "Format a number of seconds in a readable way."
+  (unless (zerop seconds)
+    (let (years days hours minutes)
+      (macrolet ((comp (var n)
+                       `(progn
+                          (setq ,var (truncate (/ seconds ,n)))
+                          (setq seconds (rem* seconds ,n)))))
+        (comp years 31536000)
+        (comp days 86400)
+        (comp hours 3600)
+        (comp minutes 60))
+      (with-output-to-string
+        (loop with count = 0
+              for name across "ydhms"
+              for value in (list years days hours minutes seconds)
+              while (< count 2)
+              when (/= 0 value) do
+              (progn
+                (when (<= 1 count) (princ " "))
+                (princ (format "%d%c" value name))
+                (incf count)))))))
+
+
+(defun clasker-ticket-ago (ticket)
+  (let ((timestamp (cdr (assq 'timestamp ticket))))
+    (and timestamp (float-time (time-subtract (current-time) timestamp)))))
+
 (defun clasker-show-ticket (ticket)
   (let ((description (cdr (assq 'description ticket)))
         (duration
-         (let ((timestamp (cdr (assq 'timestamp ticket))))
-           (if timestamp
-               (format-seconds "%dd %hh %ss%z" (truncate (float-time (time-subtract (current-time) timestamp))))
-             ""))))
+         (let ((secs (clasker-ticket-ago ticket)))
+           (if secs (clasker-format-seconds secs) ""))))
     (insert (propertize (concat description
                                 (make-string (- (window-width) (length description) (length duration) 1) ?\s)
                                 duration
