@@ -36,7 +36,7 @@
 
 (defvar clasker-inhibit-confirm nil)
 
-(defun clasker-confirm (promp)
+(defun clasker-confirm (prompt)
   (or clasker-inhibit-confirm (yes-or-no-p prompt)))
 
 (defun clasker-read-action (actions)
