@@ -31,6 +31,33 @@
 
 (defcustom clasker-file "~/.clasker"
   "File where clasker file tickets are")
+
+
+;;;; Tickets
+
+(defvar clasker-tickets nil
+  "tickets")
+
+(defun clasker-load-tickets (&optional filename)
+  (let ((filename (or filename clasker-file)))
+    (when (file-readable-p filename)
+      (with-temp-buffer
+        (insert-file-contents filename)
+        (read (current-buffer))))))
+
+(defun clasker-save-tickets (&optional filename)
+  (with-temp-file (or filename clasker-file)
+    (insert ";; This file is generated automatically. Do NOT edit!\n")
+    (prin1 clasker-tickets #'insert)))
+
+
+(defun clasker-ticket-description (ticket)
+  (cdr (assq 'description ticket)))
+
+(defun clasker-ticket-ago (ticket)
+  (let ((timestamp (cdr (assq 'timestamp ticket))))
+    (and timestamp (float-time (time-subtract (current-time) timestamp)))))
+
 
 ;;;; Actions
 
@@ -72,11 +99,34 @@
       (delete-window window)
       value)))
 
-
-;;;; Tickets
 
-(defvar clasker-tickets nil
-  "tickets")
+(defvar clasker-default-actions
+  '(("Delete" . clasker-action-delete)))
+
+(defun clasker-action-delete (ticket)
+  (setq clasker-tickets (delq ticket clasker-tickets))
+  (clasker-save-tickets))
+
+
+;;;; User commands and interface
+
+(defun clasker-active-tickets ()
+  "Return a list of active tickets."
+  (cond
+   ((region-active-p)
+    (let (tickets)
+      (save-excursion
+        (let ((beginning (region-beginning))
+              (end (region-end)))
+          (goto-char beginning)
+          (block nil
+            (while (< (point) end)
+              (push (get-text-property (point) 'clasker-ticket) tickets)
+              (or (clasker-next-ticket) (return))))))
+      tickets))
+   (t
+    (get-text-property (point) 'clasker-ticket))))
+
 
 (defun clasker-format-seconds (seconds)
   "Format a number of seconds in a readable way."
@@ -102,36 +152,21 @@
                 (incf count)))))))
 
 
-(defun clasker-ticket-ago (ticket)
-  (let ((timestamp (cdr (assq 'timestamp ticket))))
-    (and timestamp (float-time (time-subtract (current-time) timestamp)))))
 
 (defun clasker-show-ticket (ticket)
-  (let ((description (cdr (assq 'description ticket)))
-        (duration
+  (let ((description (clasker-ticket-description ticket))
+        (timestring
          (let ((secs (clasker-ticket-ago ticket)))
            (if secs (clasker-format-seconds secs) ""))))
     (insert (propertize (concat description
-                                (make-string (- (window-width) (length description) (length duration) 1) ?\s)
-                                duration
+                                (make-string (- (window-width) (length description) (length timestring) 1) ?\s)
+                                timestring
                                 "\n")
                         'clasker-ticket ticket))))
 
 (defun clasker-show-tickets (list)
   (dolist (ticket (reverse list))
     (clasker-show-ticket ticket)))
-
-(defun clasker-load-tickets (&optional filename)
-  (let ((filename (or filename clasker-file)))
-    (when (file-readable-p filename)
-      (with-temp-buffer
-        (insert-file-contents filename)
-        (read (current-buffer))))))
-
-(defun clasker-save-tickets (&optional filename)
-  (with-temp-file (or filename clasker-file)
-    (insert ";; This file is generated automatically. Do NOT edit!\n")
-    (prin1 clasker-tickets #'insert)))
 
 (defun clasker-render ()
   (widen)
@@ -163,12 +198,12 @@
           (clasker-render))))
     (clasker-save-tickets)))
 
+
 (defun clasker-delete-ticket ()
   (interactive)
   (let ((ticket (get-text-property (point) 'clasker-ticket)))
     (when (and ticket (clasker-confirm "Do you want to delete this ticket? "))
-      (setq clasker-tickets (delq ticket clasker-tickets))
-      (clasker-save-tickets)
+      (clasker-action-delete ticket)
       (clasker-render))))
 
 (defun clasker-next-ticket ()
@@ -183,12 +218,12 @@
 
 (defun clasker-do ()
   (interactive)
-  (let ((ticket (get-text-property (point) 'clasker-ticket))
-        (clasker-inhibit-confirm t))
-    (when ticket
-      (let ((action
-             (clasker-read-action '(("Delete" . clasker-delete-ticket)))))
-        (and action (call-interactively action))))))
+  (let ((clasker-inhibit-confirm t)
+        (action (clasker-read-action clasker-default-actions)))
+    (when action
+      (dolist (ticket (clasker-active-tickets))
+        (funcall action ticket))))
+  (clasker-render))
 
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
