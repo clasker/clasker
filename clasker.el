@@ -38,10 +38,19 @@
 (defvar clasker-tickets nil
   "tickets")
 
+(defun clasker-show-ticket (ticket)
+  (let ((description (cdr (assq 'description ticket)))
+        (duration
+         (let ((timestamp (cdr (assq 'timestamp ticket))))
+           (if timestamp
+               (format-seconds "%dd %hh %ss%z" (truncate (float-time (time-subtract (current-time) timestamp))))
+             ""))))
+    (insert (propertize (format "%s%60s\n" description duration)
+                        'clasker-ticket ticket))))
+
 (defun clasker-show-tickets (list)
   (dolist (ticket list)
-    (let ((description (cdr (assq 'description ticket))))
-      (insert (propertize (concat description "\n") 'clasker-ticket ticket)))))
+    (clasker-show-ticket ticket)))
 
 (defun clasker-load-tickets (&optional filename)
   (let ((filename (or filename clasker-file)))
@@ -72,7 +81,9 @@
 (defun clasker-new-ticket ()
   (interactive)
   (let* ((ticket-desc (read-string "Description: "))
-         (ticket (acons 'description ticket-desc nil)))
+         (ticket
+          `((description . , ticket-desc)
+            (timestamp . ,(butlast (current-time))))))
     (push ticket clasker-tickets))
   (clasker-save-tickets)
   (clasker-revert))
