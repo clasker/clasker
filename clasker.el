@@ -132,7 +132,7 @@
               (or (clasker-next-ticket) (return))))))
       tickets))
    (t
-    (get-text-property (point) 'clasker-ticket))))
+    (list (get-text-property (point) 'clasker-ticket)))))
 
 
 (defun clasker-format-seconds (seconds)
