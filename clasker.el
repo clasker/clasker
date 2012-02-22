@@ -27,15 +27,21 @@
 (eval-when-compile
   (require 'cl))
 
+(require 'eieio)
+
 (defcustom clasker-file "~/.clasker"
   "File where clasker file tickets are")
+
+
+;;;; Tickets
 
 (defvar clasker-tickets nil
   "tickets")
 
 (defun clasker-show-tickets (list)
-  (dolist (title list)
-    (insert (propertize (concat title "\n") 'clasker-ticket title))))
+  (dolist (ticket list)
+    (let ((description (cdr (assq 'description ticket))))
+      (insert (propertize (concat description "\n") 'clasker-ticket ticket)))))
 
 (defun clasker-load-tickets (&optional filename)
   (let ((filename (or filename clasker-file)))
@@ -65,8 +71,9 @@
 
 (defun clasker-new-ticket ()
   (interactive)
-  (let ((ticket-desc (read-string "Description: ")))
-    (push ticket-desc clasker-tickets))
+  (let* ((ticket-desc (read-string "Description: "))
+         (ticket (acons 'description ticket-desc nil)))
+    (push ticket clasker-tickets))
   (clasker-save-tickets)
   (clasker-revert))
 
