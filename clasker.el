@@ -148,7 +148,7 @@
               when (/= 0 value) do
               (progn
                 (when (<= 1 count) (princ " "))
-                (princ (format "%d%c" value name))
+                (princ (format "%2d%c" value name))
                 (incf count)))))))
 
 
