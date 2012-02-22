@@ -52,7 +52,7 @@
                         'clasker-ticket ticket))))
 
 (defun clasker-show-tickets (list)
-  (dolist (ticket list)
+  (dolist (ticket (reverse list))
     (clasker-show-ticket ticket)))
 
 (defun clasker-load-tickets (&optional filename)
