@@ -36,6 +36,9 @@
 
 (defvar clasker-inhibit-confirm nil)
 
+(defun clasker-confirm (promp)
+  (or clasker-inhibit-confirm (yes-or-no-p prompt)))
+
 (defun clasker-read-action (actions)
   "Read an action from keyboard."
   (save-excursion
@@ -136,9 +139,7 @@
 (defun clasker-delete-ticket ()
   (interactive)
   (let ((ticket (get-text-property (point) 'clasker-ticket)))
-    (when (and ticket
-               (or clasker-inhibit-confirm
-                   (yes-or-no-p "Do you want to delete this ticket? ")))
+    (when (and ticket (clasker-confirm "Do you want to delete this ticket? "))
       (setq clasker-tickets (delq ticket clasker-tickets))
       (clasker-save-tickets)
       (clasker-render))))
