@@ -165,6 +165,7 @@
   (setq clasker-tickets (delq ticket clasker-tickets))
   (clasker-save-tickets))
 
+
 (defun clasker-action-edit (ticket)
   (let ((new-text
          (read-string "New description: "
@@ -173,6 +174,24 @@
                       (clasker-ticket-description ticket))))
     (clasker-ticket-set-property ticket  'description new-text))
   (clasker-save-tickets))
+
+
+(defmacro with-gensyms (symbols &rest body)
+  (declare (indent 1))
+  `(let ,(mapcar (lambda (sym)
+                   `(,sym (gensym)))
+                 symbols)
+     ,@body))
+
+(defmacro with-new-window (lines &rest body)
+  (with-gensyms (window buffer returnval)
+    `(save-excursion
+      (let ((,window (split-window-vertically (- (window-height) ,lines)))
+            (,buffer (generate-new-buffer "*Clasker Something*")))
+        (with-selected-window ,window
+          (switch-to-buffer ,buffer t)
+          (erase-buffer)
+          ,@body)))))
 
 
 ;;;; User commands and interface
