@@ -193,6 +193,13 @@
           (erase-buffer)
           ,@body)))))
 
+(defun clasker-action-edit (ticket)
+  (with-new-window 10
+                   (clasker-edit-mode)
+                   (local-set-key (kbd "C-c C-c" 'save))
+                   (insert (clasker-ticket-description ticket))
+                   ))
+
 
 ;;;; User commands and interface
 
