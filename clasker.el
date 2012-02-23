@@ -258,7 +258,7 @@
   (clasker-render))
 
 (defun clasker-open-file (arg)
-  (interactive "fOpen Claskfile: ")
+  (interactive "fOpen Clasker file: ")
   (setf clasker-file arg)
   (clasker-revert))
 
