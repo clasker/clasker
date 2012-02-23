@@ -160,7 +160,7 @@
 (defun clasker-format-seconds (seconds)
   "Format a number of seconds in a readable way."
   (unless (plusp seconds)
-    (error "%a is not a possitive number." seconds))
+    (error "%d is not a possitive number." seconds))
   (let (years days hours minutes)
     (macrolet ((comp (var n)
                      `(progn
@@ -171,18 +171,14 @@
       (comp hours 3600)
       (comp minutes 60))
     (with-output-to-string
-      (mapc* (lambda (name value)
-               (unless (zerop value)
-                 (princ (format "%2d%s" value name))))
-             (list "y" "d" "h" "m" "s")
-             (list years days hours minutes seconds)))))
-
-;;; move up when davazp-validated
-(defun mapc* (f &rest xs)
-  "MAPCAR for multiple sequences"
-  (when (not (memq nil xs))
-    (apply f (mapcar 'car xs))
-    (apply 'mapc* f (mapcar 'cdr xs))))
+      (loop for (name1 name2) on '("y" "d" "h" "m" "s")
+            for (value1 value2) on (list years days hours minutes seconds)
+            while (zerop value1)
+            finally
+            (progn
+              (princ (format "%d%s" value1 name1))
+              (unless (or (null value2) (zerop value2))
+                (princ (format "%3d%s" value2 name2))))))))
 
 (defun clasker-show-ticket (ticket)
   (let ((description (clasker-ticket-description ticket))
