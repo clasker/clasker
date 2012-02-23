@@ -50,22 +50,23 @@
   :initialize (lambda (symbol value)
                 (let ((path
                        (if clasker-smart-file
-                           (clasker-member-directory
+                           (clasker-find-directory-upwards
                             default-directory
                             "~/"
-                            (lambda (x) (file-exists-p (concat x ".clasker") ))))))
+                            (lambda (x) (file-exists-p (concat x ".clasker") )))
+                         default-directory)))
                   (setq clasker-file (concat path ".clasker")))))
 
-(defun clasker-member-directory (from to fun &optional if-nil)
+(defun clasker-find-directory-upwards (from to test &optional if-nil)
   (when (not (file-exists-p from))
     (return))
   (if (or (equal (expand-file-name from) (expand-file-name to))
           (equal from "/")) ;how to do it multiplatform?
       (or if-nil to)
-    (if (funcall fun from) from
+    (if (funcall test from) from
       (clasker-member-directory (expand-file-name (concat from "/../")) ;how to do it multiplatform?
                                 to
-                                fun
+                                test
                                 if-nil))))
 
 
