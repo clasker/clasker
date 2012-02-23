@@ -233,8 +233,15 @@
               (unless (or (null value2) (zerop value2))
                 (princ (format "%3d%s" value2 name2))))))))
 
+(defun clasker-ticket-headline (ticket)
+  (let* ((lines (split-string (clasker-ticket-description ticket) "\n"))
+         (header (first lines)))
+    (if (< 1 (length lines))
+        (concat header " ...")
+      header)))
+
 (defun clasker-show-ticket (ticket)
-  (let ((description (first (split-string (clasker-ticket-description ticket) "\n")))
+  (let ((description (clasker-ticket-headline ticket) )
         (timestring
          (let ((secs (clasker-ticket-ago ticket)))
            (if secs (clasker-format-seconds secs) ""))))
