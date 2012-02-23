@@ -49,11 +49,25 @@
   :set-after '(clasker-smart-file)
   :initialize (lambda (symbol value)
                 (let ((path
-                       (if (and clasker-smart-file
-                                (file-exists-p (concat default-directory ".clasker") ))
-                           default-directory
-                         "~/")))
+                       (if clasker-smart-file
+                           (clasker-member-directory
+                            default-directory
+                            "~/"
+                            (lambda (x) (file-exists-p (concat x ".clasker") ))))))
                   (setq clasker-file (concat path ".clasker")))))
+
+(defun clasker-member-directory (from to fun &optional if-nil)
+  (when (not (file-exists-p from))
+    (return))
+  (if (or (equal (expand-file-name from) (expand-file-name to))
+          (equal from "/")) ;how to do it multiplatform?
+      (or if-nil to)
+    (if (funcall fun from) from
+      (clasker-member-directory (expand-file-name (concat from "/../")) ;how to do it multiplatform?
+                                to
+                                fun
+                                if-nil))))
+
 
 ;;;; Tickets
 
