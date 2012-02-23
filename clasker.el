@@ -149,13 +149,18 @@
       (comp hours 3600)
       (comp minutes 60))
     (with-output-to-string
-      (do ((names '("y" "d" "h" "m" "s") (cdr names))
-           (values (list years days hours minutes seconds) (cdr values)))
-          ((/= 0 (car values))
-           (princ (format "%2d%s" (car values) (car names)))
-           (unless (zerop (cadr values))
-             (princ (format "%3d%s" (cadr values) (cadr names)))))))))
+      (mapc* (lambda (name value)
+               (unless (zerop value)
+                 (princ (format "%2d%s" value name))))
+             (list "y" "d" "h" "m" "s")
+             (list years days hours minutes seconds)))))
 
+;;; move up when davazp-validated
+(defun mapc* (f &rest xs)
+  "MAPCAR for multiple sequences"
+  (when (not (memq nil xs))
+    (apply f (mapcar 'car xs))
+    (apply 'mapc* f (mapcar 'cdr xs))))
 
 (defun clasker-show-ticket (ticket)
   (let ((description (clasker-ticket-description ticket))
