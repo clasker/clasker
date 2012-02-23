@@ -3,7 +3,9 @@
 ;; Copyright (C) 2012  Raimon Grau
 ;; Copyright (C) 2012  David Vázquez
 
-;; Authors: David Vázquez <davazp@gmail.com>, Raimon Grau <raimonster@gmail.com>
+;; Authors: David Vázquez <davazp@gmail.com>
+;;          Raimon Grau <raimonster@gmail.com>
+
 ;; Keywords: tools
 
 ;; This program is free software; you can redistribute it and/or modify
