@@ -1,6 +1,7 @@
 ;;; clasker.el --- An experimental tracker for Emacs
 
-;; Copyright (C) 2012  David Vázquez, Raimon Grau
+;; Copyright (C) 2012  Raimon Grau
+;; Copyright (C) 2012  David Vázquez
 
 ;; Authors: David Vázquez <davazp@gmail.com>, Raimon Grau <raimonster@gmail.com>
 ;; Keywords: tools
