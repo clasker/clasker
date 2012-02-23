@@ -247,6 +247,11 @@
         (funcall action ticket))))
   (clasker-render))
 
+(defun clasker-open-file (arg)
+  (interactive "fOpen Claskfile: ")
+  (setf clasker-file arg)
+  (clasker-revert))
+
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "g") 'revert-buffer)
@@ -255,6 +260,7 @@
     (define-key map (kbd "q") 'clasker-quit)
     (define-key map (kbd "n") 'clasker-next-ticket)
     (define-key map (kbd "p") 'clasker-previous-ticket)
+    (define-key map (kbd "C-c C-f") 'clasker-open-file)
     (define-key map (kbd "RET") 'clasker-do)
     map)
   "docstring")
