@@ -64,7 +64,7 @@
           (equal from "/")) ;how to do it multiplatform?
       (or if-nil to)
     (if (funcall test from) from
-      (clasker-member-directory (expand-file-name (concat from "/../")) ;how to do it multiplatform?
+      (clasker-find-directory-upwards (expand-file-name (concat from "/../")) ;how to do it multiplatform?
                                 to
                                 test
                                 if-nil))))
