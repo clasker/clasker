@@ -31,7 +31,7 @@
   (require 'cl))
 
 (require 'eieio)
-
+(require 'clasker-edit)
 (defgroup clasker nil
   "Experimental task management."
   :prefix "clasker-"
@@ -165,17 +165,6 @@
   (setq clasker-tickets (delq ticket clasker-tickets))
   (clasker-save-tickets))
 
-
-(defun clasker-action-edit (ticket)
-  (let ((new-text
-         (read-string "New description: "
-                      (clasker-ticket-description ticket)
-                      nil
-                      (clasker-ticket-description ticket))))
-    (clasker-ticket-set-property ticket  'description new-text))
-  (clasker-save-tickets))
-
-
 (defmacro with-gensyms (symbols &rest body)
   (declare (indent 1))
   `(let ,(mapcar (lambda (sym)
@@ -184,21 +173,21 @@
      ,@body))
 
 (defmacro with-new-window (lines &rest body)
+  (declare (indent 1))
   (with-gensyms (window buffer returnval)
     `(save-excursion
       (let ((,window (split-window-vertically (- (window-height) ,lines)))
             (,buffer (generate-new-buffer "*Clasker Something*")))
-        (with-selected-window ,window
-          (switch-to-buffer ,buffer t)
-          (erase-buffer)
-          ,@body)))))
+        (select-window ,window)
+        (switch-to-buffer ,buffer t)
+        (erase-buffer)
+        ,@body))))
 
 (defun clasker-action-edit (ticket)
   (with-new-window 10
-                   (clasker-edit-mode)
-                   (local-set-key (kbd "C-c C-c" 'save))
-                   (insert (clasker-ticket-description ticket))
-                   ))
+    (clasker-edit-mode)
+    (set (make-local-variable 'current-ticket) ticket)
+    (insert (clasker-ticket-description ticket))))
 
 
 ;;;; User commands and interface
@@ -245,7 +234,7 @@
                 (princ (format "%3d%s" value2 name2))))))))
 
 (defun clasker-show-ticket (ticket)
-  (let ((description (clasker-ticket-description ticket))
+  (let ((description (first (split-string (clasker-ticket-description ticket) "\n")))
         (timestring
          (let ((secs (clasker-ticket-ago ticket)))
            (if secs (clasker-format-seconds secs) ""))))
