@@ -120,11 +120,21 @@
 
 
 (defvar clasker-default-actions
-  '(("Delete" . clasker-action-delete)))
+  '(("Delete" . clasker-action-delete)
+    ("Edit" . clasker-action-edit)))
 
 (defun clasker-action-delete (ticket)
   (setq clasker-tickets (delq ticket clasker-tickets))
   (clasker-save-tickets))
+
+(defun clasker-action-edit (ticket)
+  (let ((new-text (read-string "New description: "
+                               (clasker-ticket-description ticket)
+                               nil
+                               (clasker-ticket-description ticket))))
+
+    (setf (cdr (assoc 'description ticket)) new-text)
+    (clasker-save-tickets)))
 
 
 ;;;; User commands and interface
