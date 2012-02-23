@@ -111,7 +111,7 @@
             (setq quit-flag t))
            ((and (<= ?0 c) (<= c ?9))
             (let ((n (string-to-number (string c))))
-              (when (<= n (length actions))
+              (when (< n (length actions))
                 (setq value (cdr (nth n actions)))
                 (setq finishp t)))))))
       (kill-buffer buffer)
