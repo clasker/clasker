@@ -34,11 +34,23 @@
   :prefix "clasker-"
   :group 'applications)
 
+(defcustom clasker-smart-file t
+  "when set to t, tries to find a .clasker file in the current directory"
+  :type 'boolean
+  :group 'clasker)
+
 (defcustom clasker-file "~/.clasker"
   "File where clasker file tickets are"
   :type 'file
-  :group 'clasker)
-
+  :group 'clasker
+  :set-after '(clasker-smart-file)
+  :initialize (lambda (symbol value)
+                (let ((path
+                       (if (and clasker-smart-file
+                                (file-exists-p (concat default-directory ".clasker") ))
+                           default-directory
+                         "~/")))
+                  (setq clasker-file (concat path ".clasker")))))
 
 ;;;; Tickets
 
