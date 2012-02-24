@@ -32,6 +32,7 @@
 
 (require 'eieio)
 (require 'clasker-edit)
+
 (defgroup clasker nil
   "Experimental task management."
   :prefix "clasker-"
