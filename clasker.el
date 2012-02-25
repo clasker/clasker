@@ -1,4 +1,4 @@
-;;; clasker.el --- An experimental tracker for Emacs
+;;; Clasker.el --- An experimental tracker for Emacs
 
 ;; Copyright (C) 2012  Raimon Grau
 ;; Copyright (C) 2012  David Vázquez
@@ -42,6 +42,18 @@
   :type 'boolean
   :group 'clasker)
 
+(defun clasker-find-directory-upwards (from to test &optional if-nil)
+  (when (not (file-exists-p from))
+    (return))
+  (if (or (equal (expand-file-name from) (expand-file-name to))
+          (equal from "/")) ;how to do it multiplatform?
+      (or if-nil to)
+    (if (funcall test from) from
+      (clasker-find-directory-upwards (expand-file-name (concat from "/../")) ;how to do it multiplatform?
+                                to
+                                test
+                                if-nil))))
+
 (defcustom clasker-file "~/.clasker"
   "File where clasker file tickets are"
   :type 'file
@@ -57,20 +69,30 @@
                          default-directory)))
                   (setq clasker-file (concat path ".clasker")))))
 
-(defun clasker-find-directory-upwards (from to test &optional if-nil)
-  (when (not (file-exists-p from))
-    (return))
-  (if (or (equal (expand-file-name from) (expand-file-name to))
-          (equal from "/")) ;how to do it multiplatform?
-      (or if-nil to)
-    (if (funcall test from) from
-      (clasker-find-directory-upwards (expand-file-name (concat from "/../")) ;how to do it multiplatform?
-                                to
-                                test
-                                if-nil))))
+
 
 
 ;;;; Tickets
+
+(defclass clasker-ticket ()
+  ((properties :initarg :properties
+               ;; :writer clasker-set-properties
+               ;; :reader clasker-get-properties
+               :type list
+               :documentation "property alist")))
+
+;(defgeneric clasker-ticket-get-property (ticket property) "doc")
+
+(defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name)
+  (cdr (assq property-name (slot-value ticket 'properties))))
+
+(defmethod clasker-ticket-set-property ((ticket clasker-ticket) property)
+  (let ((prop (car property))
+        (val (cdr property)))
+    (setf (cdr (assoc prop (slot-value ticket 'properties))) val)))
+
+(defmethod clasker-ticket-add-property ((ticket clasker-ticket) property value)
+  (object-add-to-list ticket 'properties (cons property value)))
 
 (defvar clasker-tickets nil
   "tickets")
@@ -89,10 +111,10 @@
 
 
 (defun clasker-ticket-description (ticket)
-  (cdr (assq 'description ticket)))
+  (clasker-ticket-get-property ticket 'description))
 
 (defun clasker-ticket-ago (ticket)
-  (let ((timestamp (cdr (assq 'timestamp ticket))))
+  (let ((timestamp (clasker-ticket-get-property ticket 'timestamp)))
     (and timestamp (float-time (time-subtract (current-time) timestamp)))))
 
 
@@ -146,13 +168,13 @@
   (clasker-save-tickets))
 
 (defun clasker-action-edit (ticket)
-  (let ((new-text (read-string "New description: "
-                               (clasker-ticket-description ticket)
-                               nil
-                               (clasker-ticket-description ticket))))
-
-    (setf (cdr (assoc 'description ticket)) new-text)
-    (clasker-save-tickets)))
+  (let ((new-text
+         (read-string "New description: "
+                      (clasker-ticket-description ticket)
+                      nil
+                      (clasker-ticket-description ticket))))
+    (clasker-ticket-set-property ticket (cons 'description new-text)))
+  (clasker-save-tickets))
 
 
 ;;;; User commands and interface
@@ -233,14 +255,15 @@
 
 (defun clasker-new-tickets ()
   (interactive)
-  (let (end)
+  (let (end ticket)
     (while (not end)
       (let ((description (read-string "Description (or RET to finish): " nil nil :no-more-input)))
         (if (eq description :no-more-input)
             (setf end t)
-          (push `((description . ,description)
-                  (timestamp . ,(butlast (current-time))))
-                clasker-tickets)
+          (setf ticket (make-instance 'clasker-ticket))
+          (clasker-ticket-add-property ticket 'description description)
+          (clasker-ticket-add-property ticket 'timestamp (butlast (current-time)))
+          (push ticket clasker-tickets)
           (clasker-render))))
     (clasker-save-tickets)))
 
@@ -302,3 +325,10 @@
 
 (provide 'clasker)
 ;;; clasker.el ends here
+
+;; 17:31 <rgc> otra pregunta: no veo clara la diferencia entre plists y alists
+;; 18:09 <kehoea> rgc, se trata de la estructura
+;; 18:10 <kehoea> plist: (nombre1 valor1 nombre2 valor2)
+;; 18:10 <kehoea> alist: ((nombre1 . valor1) (nombre2 . valor2))
+;; 18:11 <kehoea> (plist-get 'nombre1 plist) => valor1
+;; 18:11 <kehoea> (assq 'nombre1 alist) => (nombre1 . valor1)
