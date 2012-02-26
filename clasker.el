@@ -173,19 +173,19 @@
                  symbols)
      ,@body))
 
-(defmacro with-new-window (lines &rest body)
+(defmacro clasker-with-new-window (buffer-name height &rest body)
   (declare (indent 1))
   (with-gensyms (window buffer returnval)
     `(save-excursion
-      (let ((,window (split-window-vertically (- (window-height) ,lines)))
-            (,buffer (generate-new-buffer "*Clasker Something*")))
+      (let ((,window (split-window-vertically (- (window-height) ,height)))
+            (,buffer (generate-new-buffer ,buffer-name)))
         (select-window ,window)
         (switch-to-buffer ,buffer t)
         (erase-buffer)
         ,@body))))
 
 (defun clasker-action-edit (ticket)
-  (with-new-window 10
+  (clasker-with-new-window "*Clasker Edit*" 10
     (clasker-edit-mode)
     (set (make-local-variable 'current-ticket) ticket)
     (insert (clasker-ticket-description ticket))))

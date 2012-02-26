@@ -1,8 +1,8 @@
 (defun clasker-edit-save-ticket ()
   (interactive)
-  (setf (cdr (assoc 'description current-ticket))
-        (buffer-string))
-  (clasker-save-tickets)
+  (clasker-ticket-set-property current-ticket 'description (buffer-string))
+  (clasker-save-tickets)                ;TODO: Remove when loading is
+                                        ;not done from file
   (clasker-edit-quit))
 
 (defun clasker-edit-quit ()
