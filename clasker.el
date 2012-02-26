@@ -327,12 +327,13 @@ list of tickets to be shown in the current view.")
         (timestring
          (let ((secs (clasker-ticket-ago ticket)))
            (if secs (clasker-format-seconds secs) ""))))
-    (insert (propertize (concat "  "
+    (insert (apply 'propertize (concat "  "
                                 description
                                 (make-string (max 0 (- (window-width) (length description) (length timestring) 3)) ?\s)
                                 (propertize timestring 'face 'compilation-info)
                                 "\n")
-                        'clasker-ticket ticket))))
+                   'clasker-ticket ticket
+                   (when (clasker-active-p ticket) '(face bold))))))
 
 (defun clasker-show-tickets (list)
   (dolist (ticket (reverse list))
