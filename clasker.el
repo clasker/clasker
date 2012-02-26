@@ -85,12 +85,10 @@
 (defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name)
   (cdr (assq property-name (slot-value ticket 'properties))))
 
-(defmethod clasker-ticket-set-property ((ticket clasker-ticket) property)
-  (let ((prop (car property))
-        (val (cdr property)))
-    (if (assoc prop (slot-value ticket 'properties))
-        (setcdr (assoc prop (slot-value ticket 'properties)) val)
-      (clasker-ticket-add-property ticket prop val))))
+(defmethod clasker-ticket-set-property ((ticket clasker-ticket) property value)
+  (if (assoc property (slot-value ticket 'properties))
+      (setcdr (assoc property (slot-value ticket 'properties)) value)
+    (clasker-ticket-add-property ticket property value)))
 
 (defmethod clasker-ticket-add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
@@ -175,7 +173,7 @@
                       (clasker-ticket-description ticket)
                       nil
                       (clasker-ticket-description ticket))))
-    (clasker-ticket-set-property ticket (cons 'description new-text)))
+    (clasker-ticket-set-property ticket  'description new-text))
   (clasker-save-tickets))
 
 
@@ -263,8 +261,8 @@
         (if (eq description :no-more-input)
             (setf end t)
           (setf ticket (make-instance 'clasker-ticket))
-          (clasker-ticket-add-property ticket 'description description)
-          (clasker-ticket-add-property ticket 'timestamp (butlast (current-time)))
+          (clasker-ticket-set-property ticket 'description description)
+          (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
           (push ticket clasker-tickets)
           (clasker-render))))
     (clasker-save-tickets)))
