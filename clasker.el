@@ -78,6 +78,7 @@
   ((properties :initarg :properties
                ;; :writer clasker-set-properties
                ;; :reader clasker-get-properties
+               :initform ()
                :type list
                :documentation "property alist")))
 
