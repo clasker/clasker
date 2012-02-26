@@ -38,48 +38,51 @@
   :prefix "clasker-"
   :group 'applications)
 
-(defcustom clasker-smart-file t
-  "when set to t, tries to find a .clasker file in the current directory"
-  :type 'boolean
-  :group 'clasker)
+;; (defcustom clasker-smart-file t
+;;   "when set to t, tries to find a .clasker file in the current directory"
+;;   :type 'boolean
+;;   :group 'clasker)
 
-(defun clasker-find-directory-upwards (from to test &optional if-nil)
-  (when (not (file-exists-p from))
-    (return))
-  (if (or (equal (expand-file-name from) (expand-file-name to))
-          (equal from "/")) ;how to do it multiplatform?
-      (or if-nil to)
-    (if (funcall test from) from
-      (clasker-find-directory-upwards (expand-file-name (concat from "/../")) ;how to do it multiplatform?
-                                to
-                                test
-                                if-nil))))
+;; (defun clasker-find-directory-upwards (from to test &optional if-nil)
+;;   (when (not (file-exists-p from))
+;;     (return))
+;;   (if (or (equal (expand-file-name from) (expand-file-name to))
+;;           (equal from "/")) ;how to do it multiplatform?
+;;       (or if-nil to)
+;;     (if (funcall test from) from
+;;       (clasker-find-directory-upwards (expand-file-name (concat from "/../")) ;how to do it multiplatform?
+;;                                 to
+;;                                 test
+;;                                 if-nil))))
 
 (defcustom clasker-file "~/.clasker"
   "File where clasker file tickets are"
   :type 'file
   :group 'clasker
-  :set-after '(clasker-smart-file)
-  :initialize (lambda (symbol value)
-                (let ((path
-                       (if clasker-smart-file
-                           (clasker-find-directory-upwards
-                            default-directory
-                            "~/"
-                            (lambda (x) (file-exists-p (concat x ".clasker") )))
-                         default-directory)))
-                  (setq clasker-file (concat path ".clasker")))))
-
-
+  ;; :set-after '(clasker-smart-file)
+  ;; :initialize (lambda (symbol value)
+  ;;               (let ((path
+  ;;                      (if clasker-smart-file
+  ;;                          (clasker-find-directory-upwards
+  ;;                           default-directory
+  ;;                           "~/"
+  ;;                           (lambda (x) (file-exists-p (concat x ".clasker") )))
+  ;;                        default-directory)))
+  ;;                 (setq clasker-file (concat path ".clasker"))))
+  )
 
 
 ;;;; Tickets
 
 (defclass clasker-ticket ()
-  ((properties :initarg :properties
-               :initform ()
-               :type list
-               :documentation "property alist")))
+  ((properties
+    :initarg :properties
+    :initform ()
+    :type list
+    :documentation "property alist")))
+
+(defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
+  (object-add-to-list ticket 'properties (cons property value)))
 
 (defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name)
   (cdr (assq property-name (slot-value ticket 'properties))))
@@ -89,8 +92,14 @@
       (setcdr (assoc property (slot-value ticket 'properties)) value)
     (clasker-ticket--add-property ticket property value)))
 
-(defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
-  (object-add-to-list ticket 'properties (cons property value)))
+
+(defclass clasker-ticket-local (clasker-ticket)
+  ((filename
+    :initarg :filename
+    :type file)
+   (line
+    :initarg :line
+    :type integer)))
 
 
 (defvar clasker-tickets nil
@@ -101,12 +110,22 @@
     (when (file-readable-p filename)
       (with-temp-buffer
         (insert-file-contents filename)
-        (read (current-buffer))))))
+        (goto-char (point-min))
+        (let ((finishp nil)
+              (tickets nil))
+          (while (not finishp)
+            (ignore-errors
+              (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
+                     (ticket (read-from-whole-string line)))
+                (push ticket tickets)))
+            (setq finishp (plusp (forward-line))))
+          tickets)))))
 
 (defun clasker-save-tickets (&optional filename)
   (with-temp-file (or filename clasker-file)
     (insert ";; This file is generated automatically. Do NOT edit!\n")
-    (prin1 clasker-tickets #'insert)))
+    (dolist (ticket clasker-tickets)
+      (prin1 ticket #'insert))))
 
 
 (defun clasker-ticket-description (ticket)
@@ -175,14 +194,16 @@
 
 (defmacro clasker-with-new-window (buffer-name height &rest body)
   (declare (indent 1))
-  (with-gensyms (window buffer returnval)
+  (let ((window (make-symbol "window"))
+        (buffer (make-symbol "buffer"))
+        (returnval (make-symbol "returnval")))
     `(save-excursion
-      (let ((,window (split-window-vertically (- (window-height) ,height)))
-            (,buffer (generate-new-buffer ,buffer-name)))
-        (select-window ,window)
-        (switch-to-buffer ,buffer t)
-        (erase-buffer)
-        ,@body))))
+       (let ((,window (split-window-vertically (- (window-height) ,height)))
+             (,buffer (generate-new-buffer ,buffer-name)))
+         (select-window ,window)
+         (switch-to-buffer ,buffer t)
+         (erase-buffer)
+         ,@body))))
 
 (defun clasker-action-edit (ticket)
   (clasker-with-new-window "*Clasker Edit*" 10
@@ -281,7 +302,7 @@
       (let ((description (read-string "Description (or RET to finish): " nil nil :no-more-input)))
         (if (eq description :no-more-input)
             (setf end t)
-          (setf ticket (make-instance 'clasker-ticket))
+          (setf ticket (make-instance 'clasker-ticket-local))
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
           (push ticket clasker-tickets)
@@ -353,3 +374,4 @@
 ;; 18:10 <kehoea> alist: ((nombre1 . valor1) (nombre2 . valor2))
 ;; 18:11 <kehoea> (plist-get 'nombre1 plist) => valor1
 ;; 18:11 <kehoea> (assq 'nombre1 alist) => (nombre1 . valor1)
+  
