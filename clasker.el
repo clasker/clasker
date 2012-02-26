@@ -81,18 +81,19 @@
                :type list
                :documentation "property alist")))
 
-;(defgeneric clasker-ticket-get-property (ticket property) "doc")
-
 (defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name)
   (cdr (assq property-name (slot-value ticket 'properties))))
 
 (defmethod clasker-ticket-set-property ((ticket clasker-ticket) property)
   (let ((prop (car property))
         (val (cdr property)))
-    (setf (cdr (assoc prop (slot-value ticket 'properties))) val)))
+    (if (assoc prop (slot-value ticket 'properties))
+        (setcdr (assoc prop (slot-value ticket 'properties)) val)
+      (clasker-ticket-add-property ticket prop val))))
 
 (defmethod clasker-ticket-add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
+
 
 (defvar clasker-tickets nil
   "tickets")
