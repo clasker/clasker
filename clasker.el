@@ -76,8 +76,6 @@
 
 (defclass clasker-ticket ()
   ((properties :initarg :properties
-               ;; :writer clasker-set-properties
-               ;; :reader clasker-get-properties
                :initform ()
                :type list
                :documentation "property alist")))
@@ -88,9 +86,9 @@
 (defmethod clasker-ticket-set-property ((ticket clasker-ticket) property value)
   (if (assoc property (slot-value ticket 'properties))
       (setcdr (assoc property (slot-value ticket 'properties)) value)
-    (clasker-ticket-add-property ticket property value)))
+    (clasker-ticket--add-property ticket property value)))
 
-(defmethod clasker-ticket-add-property ((ticket clasker-ticket) property value)
+(defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
 
 
