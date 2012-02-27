@@ -27,11 +27,12 @@
 
 ;;; Code:
 
+(defvar current-ticket)
+
 (defun clasker-edit-save-ticket ()
   (interactive)
   (clasker-ticket-set-property current-ticket 'description (buffer-string))
-  (clasker-save-tickets)                ;TODO: Remove when loading is
-                                        ;not done from file
+  (clasker-save-ticket current-ticket)
   (clasker-edit-quit))
 
 (defun clasker-edit-quit ()
