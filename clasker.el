@@ -89,6 +89,11 @@
       (setcdr (assoc property (slot-value ticket 'properties)) value)
     (clasker-ticket--add-property ticket property value)))
 
+(defmethod clasker-ticket-delete-property ((ticket clasker-ticket) property)
+  (let ((property-list (slot-value ticket 'properties)))
+    (when (assoc property property-list)
+     (oset ticket properties (assq-delete-all property (slot-value ticket 'properties))))))
+
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
 
