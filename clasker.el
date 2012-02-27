@@ -27,6 +27,37 @@
 
 ;;; Code:
 
+;;; A ticket is an (direct or indirect) instance of the class
+;;; `clasker-ticket'. Tickets have an association list of properties
+;;; and values, which can be customized by clasker modules or the
+;;; user. Some properties have a special meaning in clasker, as they
+;;; are used across the whole project.
+;;;
+;;;    DESCRIPTION
+;;;
+;;;    TIMESTAMP
+;;;
+;;; The functions `clasker-ticket-get-property' and
+;;; `clasker-ticket-set-property' are provided to manipulate the
+;;; properties of a ticket.
+;;;
+;;; The variable `clasker-file' keeps the name of the file which
+;;; stores all the tickets in the system.
+;;;
+;;; Tickets can be created by the user, but they are more often
+;;; collected from several _sources_. Sources could be other local
+;;; files, remote task systems, and so on. Tickets remember the source
+;;; from which they are fetched to allow optional ticket
+;;; synchronization. Sources are described by instances of the
+;;; `clasker-source' class. The generic functions
+;;; `clasker-source-fetch-tickets' and `clasker-source-push-ticket'
+;;; are provided for synchronization.
+;;; 
+;;; Finally, no every ticket has to be list in the clasker buffer. A
+;;; buffer-local variable `clasker-view-function' is supposed to keep
+;;; a function which will return the list of tickets to show.
+;;; 
+
 (eval-when-compile
   (require 'cl))
 
@@ -38,38 +69,10 @@
   :prefix "clasker-"
   :group 'applications)
 
-;; (defcustom clasker-smart-file t
-;;   "when set to t, tries to find a .clasker file in the current directory"
-;;   :type 'boolean
-;;   :group 'clasker)
-
-;; (defun clasker-find-directory-upwards (from to test &optional if-nil)
-;;   (when (not (file-exists-p from))
-;;     (return))
-;;   (if (or (equal (expand-file-name from) (expand-file-name to))
-;;           (equal from "/")) ;how to do it multiplatform?
-;;       (or if-nil to)
-;;     (if (funcall test from) from
-;;       (clasker-find-directory-upwards (expand-file-name (concat from "/../")) ;how to do it multiplatform?
-;;                                 to
-;;                                 test
-;;                                 if-nil))))
-
 (defcustom clasker-file "~/.clasker"
   "File where clasker file tickets are"
   :type 'file
-  :group 'clasker
-  ;; :set-after '(clasker-smart-file)
-  ;; :initialize (lambda (symbol value)
-  ;;               (let ((path
-  ;;                      (if clasker-smart-file
-  ;;                          (clasker-find-directory-upwards
-  ;;                           default-directory
-  ;;                           "~/"
-  ;;                           (lambda (x) (file-exists-p (concat x ".clasker") )))
-  ;;                        default-directory)))
-  ;;                 (setq clasker-file (concat path ".clasker"))))
-  )
+  :group 'clasker)
 
 
 ;;;; Tickets
@@ -80,6 +83,11 @@
     :initform ()
     :type list
     :documentation "property alist")))
+
+
+(defgeneric clasker-source-fetch (source))
+(defgeneric clasker-source-push (source ticket))
+
 
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
@@ -92,18 +100,19 @@
       (setcdr (assoc property (slot-value ticket 'properties)) value)
     (clasker-ticket--add-property ticket property value)))
 
+;;; Some special properties
+
+(defun clasker-ticket-description (ticket)
+  (clasker-ticket-get-property ticket 'description))
+
+(defun clasker-ticket-ago (ticket)
+  (let ((timestamp (clasker-ticket-get-property ticket 'timestamp)))
+    (and timestamp (float-time (time-subtract (current-time) timestamp)))))
+
 
 (defclass clasker-ticket-local (clasker-ticket)
-  ((filename
-    :initarg :filename
-    :type file)
-   (line
-    :initarg :line
-    :type integer)))
-
-
-(defvar clasker-tickets nil
-  "tickets")
+  ((filename :type (or string null) :initform nil)
+   (line :type (or integer null) :initform nil)))
 
 (defun clasker-load-tickets (&optional filename)
   (let ((filename (or filename clasker-file)))
@@ -113,27 +122,43 @@
         (goto-char (point-min))
         (let ((finishp nil)
               (tickets nil))
-          (while (not finishp)
+          (while (< (point) (point-max))
             (ignore-errors
               (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
-                     (ticket (read-from-whole-string line)))
+                     (props (read-from-whole-string line))
+                     (ticket (make-instance 'clasker-ticket-local :properties props)))
+                (oset ticket filename filename)
+                (oset ticket line (line-number-at-pos))
                 (push ticket tickets)))
-            (setq finishp (plusp (forward-line))))
-          tickets)))))
+            (forward-line))
+          (nreverse tickets))))))
 
-(defun clasker-save-tickets (&optional filename)
-  (with-temp-file (or filename clasker-file)
-    (insert ";; This file is generated automatically. Do NOT edit!\n")
-    (dolist (ticket clasker-tickets)
-      (prin1 ticket #'insert))))
+(defmethod clasker-save-ticket ((ticket clasker-ticket-local))
+  (let ((file (or (oref ticket filename) clasker-file))
+        (line (oref ticket line)))
+    (with-temp-file file
+      (insert-file-contents-literally file)
+      (when (= (point-min) (point-max))
+        (insert ";; This file is generated automatically. Do NOT edit!\n"))
+      (if (not line)
+          (goto-char (point-min))
+        (goto-line line)
+        (delete-region (line-beginning-position) (line-end-position)))
+      (oset ticket filename file)
+      (oset ticket line (line-number-at-pos))
+      (let ((standard-output (current-buffer)))
+        (prin1 (oref ticket properties) #'insert)
+        (newline)))))
 
-
-(defun clasker-ticket-description (ticket)
-  (clasker-ticket-get-property ticket 'description))
-
-(defun clasker-ticket-ago (ticket)
-  (let ((timestamp (clasker-ticket-get-property ticket 'timestamp)))
-    (and timestamp (float-time (time-subtract (current-time) timestamp)))))
+(defmethod clasker-delete-ticket ((ticket clasker-ticket-local))
+  (let ((file (or (oref ticket filename) clasker-file))
+        (line (oref ticket line)))
+    (with-temp-file file
+      (insert-file-contents-literally file)
+      (when line
+        (goto-line line)
+        (delete-region (line-beginning-position) (line-end-position))
+        (newline)))))
 
 
 ;;;; Actions
@@ -181,17 +206,6 @@
   '(("Delete" . clasker-action-delete)
     ("Edit" . clasker-action-edit)))
 
-(defun clasker-action-delete (ticket)
-  (setq clasker-tickets (delq ticket clasker-tickets))
-  (clasker-save-tickets))
-
-(defmacro with-gensyms (symbols &rest body)
-  (declare (indent 1))
-  `(let ,(mapcar (lambda (sym)
-                   `(,sym (gensym)))
-                 symbols)
-     ,@body))
-
 (defmacro clasker-with-new-window (buffer-name height &rest body)
   (declare (indent 1))
   (let ((window (make-symbol "window"))
@@ -210,6 +224,21 @@
     (clasker-edit-mode)
     (set (make-local-variable 'current-ticket) ticket)
     (insert (clasker-ticket-description ticket))))
+
+
+
+;;;; Views
+
+(defvar clasker-view-function
+  'clasker-default-view
+  "The value of this variable is a function which returns the
+list of tickets to be shown in the current view.")
+
+(defun clasker-default-view ()
+  (clasker-load-tickets))
+
+(defun clasker-current-view ()
+  (funcall clasker-view-function))
 
 
 ;;;; User commands and interface
@@ -278,18 +307,14 @@
   (dolist (ticket (reverse list))
     (clasker-show-ticket ticket)))
 
-(defun clasker-render ()
+(defun clasker-revert (&optional ignore-auto noconfirm)
   (widen)
   (let ((position (point))
         (inhibit-read-only t))
     (erase-buffer)
     (insert (propertize "Clasker\n" 'face 'info-title-1) "\n")
-    (clasker-show-tickets clasker-tickets)
+    (clasker-show-tickets (clasker-current-view ))
     (goto-char (min position (point-max)))))
-
-(defun clasker-revert (&optional ignore-auto noconfirm)
-  (setq clasker-tickets (clasker-load-tickets))
-  (clasker-render))
 
 (defun clasker-quit ()
   (interactive)
@@ -305,17 +330,16 @@
           (setf ticket (make-instance 'clasker-ticket-local))
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
-          (push ticket clasker-tickets)
-          (clasker-render))))
-    (clasker-save-tickets)))
+          (clasker-save-ticket ticket)
+          (clasker-revert))))))
 
 
-(defun clasker-delete-ticket ()
+(defun clasker-delete-ticket* ()
   (interactive)
   (let ((ticket (get-text-property (point) 'clasker-ticket)))
     (when (and ticket (clasker-confirm "Do you want to delete this ticket? "))
       (clasker-action-delete ticket)
-      (clasker-render))))
+      (clasker-revert))))
 
 (defun clasker-next-ticket ()
   (interactive)
@@ -334,7 +358,7 @@
     (when action
       (dolist (ticket (clasker-active-tickets))
         (funcall action ticket))))
-  (clasker-render))
+  (clasker-revert))
 
 (defun clasker-open-file (arg)
   (interactive "fOpen Clasker file: ")
@@ -345,7 +369,7 @@
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "g") 'revert-buffer)
     (define-key map (kbd "c") 'clasker-new-tickets)
-    (define-key map (kbd "k") 'clasker-delete-ticket)
+    (define-key map (kbd "k") 'clasker-delete-ticket*)
     (define-key map (kbd "q") 'clasker-quit)
     (define-key map (kbd "n") 'clasker-next-ticket)
     (define-key map (kbd "p") 'clasker-previous-ticket)
@@ -356,7 +380,8 @@
 
 (define-derived-mode clasker-mode special-mode "Clasker"
   "docstring"
-  (set (make-local-variable 'revert-buffer-function) 'clasker-revert))
+  (set (make-local-variable 'revert-buffer-function) 'clasker-revert)
+  (set (make-local-variable 'clasker-view-function) 'clasker-default-view))
 
 (defun clasker ()
   "docstring"
