@@ -100,18 +100,38 @@
     (clasker-ticket--add-property ticket property value)))
 
 (defmethod clasker-save-ticket ((ticket clasker-ticket))
-  (let ((line (oref ticket id)))
+  (let ((line (oref ticket line)))
     (with-temp-file clasker-file
       (insert-file-contents-literally clasker-file)
-      (if (not id)
+      (if (not line)
           (goto-char (point-max))
         (goto-line line)
         (delete-region (line-beginning-position) (line-end-position)))
-      (oset ticket filename file)
-      (oset ticket id (line-number-at-pos))
+      (oset ticket filename clasker-file)
+      (oset ticket line (line-number-at-pos))
       (let ((standard-output (current-buffer)))
         (prin1 (oref ticket properties) #'insert)
         (newline)))))
+
+(defun clasker-load-tickets (&optional filename)
+  (let ((filename (or filename clasker-file)))
+    (when (file-readable-p filename)
+      (with-temp-buffer
+        (insert-file-contents filename)
+        (goto-char (point-min))
+        (let ((finishp nil)
+              (tickets nil))
+          (while (< (point) (point-max))
+            (ignore-errors
+              (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
+                     (props (read-from-whole-string line))
+                     (ticket (make-instance 'clasker-ticket :properties props)))
+                (oset ticket filename filename)
+                (oset ticket line (line-number-at-pos))
+                (push ticket tickets)))
+            (forward-line))
+          (nreverse tickets))))))
+
 
 ;;; Special properties
 
@@ -133,66 +153,11 @@
 
 (defgeneric clasker-source-fetch-tickets (source))
 (defgeneric clasker-source-push-ticket (source ticket))
-(defgeneric clasker-source-delete-ticket (source ticket))
-
-(defclass clasker-source-local (clasker-source)
-  ((filename
-    :initarg :filename
-    :type string)
-   (line
-    :initarg :line
-    :type integer)))
-
-(defmethod clasker-ticket-delete-property ((ticket clasker-ticket) property)
-  (let ((property-list (slot-value ticket 'properties)))
-    (when (assoc property property-list)
-     (oset ticket properties (assq-delete-all property (slot-value ticket 'properties))))))
-
-
-(defclass clasker-ticket-local (clasker-ticket)
-  ((filename
-    :initarg :filename
-    :type string)
-   (line
-    :initarg :line
-    :type integer)))
-
-(defun clasker-load-tickets (&optional filename)
-  (let ((filename (or filename clasker-file)))
-    (when (file-readable-p filename)
-      (with-temp-buffer
-        (insert-file-contents filename)
-        (goto-char (point-min))
-        (let ((finishp nil)
-              (tickets nil))
-          (while (< (point) (point-max))
-            (ignore-errors
-              (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
-                     (props (read-from-whole-string line))
-                     (ticket (make-instance 'clasker-ticket-local :properties props)))
-                (oset ticket filename filename)
-                (oset ticket line (line-number-at-pos))
-                (push ticket tickets)))
-            (forward-line))
-          (nreverse tickets))))))
-
-
-(defmethod clasker-delete-ticket ((ticket clasker-ticket-local))
-  (let ((file (or (oref ticket filename) clasker-file))
-        (line (oref ticket line)))
-    (with-temp-file file
-      (insert-file-contents-literally file)
-      (when line
-        (goto-line line)
-        (delete-region (line-beginning-position) (line-end-position))
-        (newline)))))
-
 
 ;;;; Actions
 
 (defvar clasker-default-actions
-  '(("Delete" . clasker-action-delete)
-    ("Edit" . clasker-action-edit)))
+  '(("Edit" . clasker-action-edit)))
 
 (defvar clasker-inhibit-confirm nil)
 (defun clasker-confirm (prompt)
@@ -353,19 +318,11 @@ list of tickets to be shown in the current view.")
       (let ((description (read-string "Description (or RET to finish): " nil nil :no-more-input)))
         (if (eq description :no-more-input)
             (setf end t)
-          (setf ticket (make-instance 'clasker-ticket-local))
+          (setf ticket (make-instance 'clasker-ticket))
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
           (clasker-save-ticket ticket)
           (clasker-revert))))))
-
-
-(defun clasker-delete-ticket* ()
-  (interactive)
-  (let ((ticket (get-text-property (point) 'clasker-ticket)))
-    (when (and ticket (clasker-confirm "Do you want to delete this ticket? "))
-      (clasker-action-delete ticket)
-      (clasker-revert))))
 
 (defun clasker-next-ticket ()
   (interactive)
@@ -395,7 +352,6 @@ list of tickets to be shown in the current view.")
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "g") 'revert-buffer)
     (define-key map (kbd "c") 'clasker-new-tickets)
-    (define-key map (kbd "k") 'clasker-delete-ticket*)
     (define-key map (kbd "q") 'clasker-quit)
     (define-key map (kbd "n") 'clasker-next-ticket)
     (define-key map (kbd "p") 'clasker-previous-ticket)
