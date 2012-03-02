@@ -71,7 +71,18 @@
   :group 'clasker)
 
 (defclass clasker-ticket ()
-  (;; Association list for this ticket.
+  (;; File and line where the ticket lives. They are used to save the changes to
+   ;; a ticket. If both are NIL, then the ticket is volatile and will not be
+   ;; saved across sessions.
+   (filename
+    :initarg :filename
+    :initform nil
+    :type (or string null))
+   (line
+    :initarg :line
+    :initform nil
+    :type (or integer null))
+   ;; Association list for this ticket.
    (properties
     :initarg :properties
     :initform ()
