@@ -28,8 +28,9 @@
 (require 'json)
 
 (defun clasker-github-issue-to-ticket (issue)
-  (let ((ticket (make-instance 'clasker-ticket)))
-    (clasker-ticket-set-property ticket 'description (cdr (assq 'body issue)))
+  (let ((ticket (make-instance 'clasker-ticket))
+        (desc (replace-regexp-in-string "" "" (cdr (assq 'body issue)))))
+    (clasker-ticket-set-property ticket 'description desc)
     ticket))
 
 (defun clasker-import-from-github (source)
@@ -45,7 +46,8 @@
       (let* ((json-array-type 'list)
              (project-issues (json-read))
              (tickets (mapcar 'clasker-github-issue-to-ticket project-issues)))
-        (mapc 'clasker-save-ticket tickets)))))
+        (mapc 'clasker-save-ticket tickets)))
+    (clasker-revert)))
 
 
 (provide 'clasker-github)
