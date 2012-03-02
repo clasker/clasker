@@ -27,35 +27,28 @@
 
 ;;; Code:
 
-;;; A ticket is an (direct or indirect) instance of the class
-;;; `clasker-ticket'. Tickets have an association list of properties
-;;; and values, which can be customized by clasker modules or the
-;;; user. Some properties have a special meaning in clasker, as they
-;;; are used across the whole project.
+;;; A ticket is an (direct or indirect) instance of the class `clasker-ticket'.
+;;; Tickets have an association list of properties and values, which can be
+;;; customized by clasker modules or the user. Some properties have a special
+;;; meaning in clasker, as they are used across the whole project.
 ;;;
 ;;;    DESCRIPTION
 ;;;
 ;;;    TIMESTAMP
 ;;;
-;;; The functions `clasker-ticket-get-property' and
-;;; `clasker-ticket-set-property' are provided to manipulate the
-;;; properties of a ticket.
+;;; Two generic functions are provided to manipulate the properties of a ticket:
+;;; `clasker-ticket-get-property' and `clasker-ticket-set-property'.
 ;;;
-;;; The variable `clasker-file' keeps the name of the file which
-;;; stores all the tickets in the system.
-;;;
-;;; Tickets can be created by the user, but they are more often
-;;; collected from several _sources_. Sources could be other local
-;;; files, remote task systems, and so on. Tickets remember the source
-;;; from which they are fetched to allow optional ticket
-;;; synchronization. Sources are described by instances of the
-;;; `clasker-source' class. The generic functions
-;;; `clasker-source-fetch-tickets' and `clasker-source-push-ticket'
-;;; are provided for synchronization.
+;;; Tickets can be created by the user, but they are more often collected from
+;;; several _sources_. Sources could be other local files, remote task systems,
+;;; and so on. Tickets remember the source from which they are fetched to allow
+;;; optional ticket synchronization. Sources are described by instances of the
+;;; `clasker-source' class. The generic functions `clasker-source-fetch-tickets'
+;;; and `clasker-source-push-ticket' are provided for synchronization.
 ;;; 
-;;; Finally, no every ticket has to be list in the clasker buffer. A
-;;; buffer-local variable `clasker-view-function' is supposed to keep
-;;; a function which will return the list of tickets to show.
+;;; Finally, no every ticket has to be list in the clasker buffer. A buffer
+;;; local variable `clasker-view-function' is supposed to keep a function which
+;;; will return the list of tickets to show.
 ;;; 
 
 (eval-when-compile
@@ -69,22 +62,20 @@
   :prefix "clasker-"
   :group 'applications)
 
+
+;;;; Tickets
+
 (defcustom clasker-file "~/.clasker"
   "File where clasker file tickets are"
   :type 'file
   :group 'clasker)
 
-
-;;;; Tickets
-
 (defclass clasker-ticket ()
-  ((properties
+  (;; Association list for this ticket.
+   (properties
     :initarg :properties
     :initform ()
-    :type list
-    :documentation "property alist")))
-
-
+    :type list)))
 
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
@@ -97,24 +88,63 @@
       (setcdr (assoc property (slot-value ticket 'properties)) value)
     (clasker-ticket--add-property ticket property value)))
 
+(defmethod clasker-save-ticket ((ticket clasker-ticket))
+  (let ((line (oref ticket id)))
+    (with-temp-file clasker-file
+      (insert-file-contents-literally clasker-file)
+      (if (not id)
+          (goto-char (point-max))
+        (goto-line line)
+        (delete-region (line-beginning-position) (line-end-position)))
+      (oset ticket filename file)
+      (oset ticket id (line-number-at-pos))
+      (let ((standard-output (current-buffer)))
+        (prin1 (oref ticket properties) #'insert)
+        (newline)))))
+
+;;; Special properties
+
+(defun clasker-ticket-description (ticket)
+  (clasker-ticket-get-property ticket 'description))
+
+(defun clasker-ticket-timestamp (ticket)
+  (clasker-ticket-get-property ticket 'timestamp))
+
+(defun clasker-ticket-ago (ticket)
+  (let ((timestamp (clasker-ticket-timestamp ticket)))
+    (and timestamp (float-time (time-subtract (current-time) timestamp)))))
+
+
+;;;; Sources and Backends
+
+(defclass clasker-source ()
+  nil)
+
+(defgeneric clasker-source-fetch-tickets (source))
+(defgeneric clasker-source-push-ticket (source ticket))
+(defgeneric clasker-source-delete-ticket (source ticket))
+
+(defclass clasker-source-local (clasker-source)
+  ((filename
+    :initarg :filename
+    :type string)
+   (line
+    :initarg :line
+    :type integer)))
+
 (defmethod clasker-ticket-delete-property ((ticket clasker-ticket) property)
   (let ((property-list (slot-value ticket 'properties)))
     (when (assoc property property-list)
      (oset ticket properties (assq-delete-all property (slot-value ticket 'properties))))))
 
-;;; Some special properties
-
-(defun clasker-ticket-description (ticket)
-  (clasker-ticket-get-property ticket 'description))
-
-(defun clasker-ticket-ago (ticket)
-  (let ((timestamp (clasker-ticket-get-property ticket 'timestamp)))
-    (and timestamp (float-time (time-subtract (current-time) timestamp)))))
-
 
 (defclass clasker-ticket-local (clasker-ticket)
-  ((filename :type (or string null) :initform nil)
-   (line :type (or integer null) :initform nil)))
+  ((filename
+    :initarg :filename
+    :type string)
+   (line
+    :initarg :line
+    :type integer)))
 
 (defun clasker-load-tickets (&optional filename)
   (let ((filename (or filename clasker-file)))
@@ -135,22 +165,6 @@
             (forward-line))
           (nreverse tickets))))))
 
-(defmethod clasker-save-ticket ((ticket clasker-ticket-local))
-  (let ((file (or (oref ticket filename) clasker-file))
-        (line (oref ticket line)))
-    (with-temp-file file
-      (insert-file-contents-literally file)
-      (when (= (point-min) (point-max))
-        (insert ";; This file is generated automatically. Do NOT edit!\n"))
-      (if (not line)
-          (goto-char (point-min))
-        (goto-line line)
-        (delete-region (line-beginning-position) (line-end-position)))
-      (oset ticket filename file)
-      (oset ticket line (line-number-at-pos))
-      (let ((standard-output (current-buffer)))
-        (prin1 (oref ticket properties) #'insert)
-        (newline)))))
 
 (defmethod clasker-delete-ticket ((ticket clasker-ticket-local))
   (let ((file (or (oref ticket filename) clasker-file))
@@ -163,16 +177,13 @@
         (newline)))))
 
 
-;;;; Sources
-
-(defgeneric clasker-source-fetch (source))
-(defgeneric clasker-source-push (source ticket))
-
-
 ;;;; Actions
 
-(defvar clasker-inhibit-confirm nil)
+(defvar clasker-default-actions
+  '(("Delete" . clasker-action-delete)
+    ("Edit" . clasker-action-edit)))
 
+(defvar clasker-inhibit-confirm nil)
 (defun clasker-confirm (prompt)
   (or clasker-inhibit-confirm (yes-or-no-p prompt)))
 
@@ -209,10 +220,6 @@
       (delete-window window)
       value)))
 
-
-(defvar clasker-default-actions
-  '(("Delete" . clasker-action-delete)
-    ("Edit" . clasker-action-edit)))
 
 (defmacro clasker-with-new-window (buffer-name height &rest body)
   (declare (indent 1))
@@ -399,12 +406,10 @@ list of tickets to be shown in the current view.")
   (clasker-revert))
 
 (provide 'clasker)
-;;; clasker.el ends here
 
-;; 17:31 <rgc> otra pregunta: no veo clara la diferencia entre plists y alists
-;; 18:09 <kehoea> rgc, se trata de la estructura
-;; 18:10 <kehoea> plist: (nombre1 valor1 nombre2 valor2)
-;; 18:10 <kehoea> alist: ((nombre1 . valor1) (nombre2 . valor2))
-;; 18:11 <kehoea> (plist-get 'nombre1 plist) => valor1
-;; 18:11 <kehoea> (assq 'nombre1 alist) => (nombre1 . valor1)
-  
+;;; Local variables:
+;;; indent-tabs-mode: nil
+;;; fill-column: 80
+;;; End:
+
+;;; clasker.el ends here
