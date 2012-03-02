@@ -317,14 +317,14 @@ list of tickets to be shown in the current view.")
       header)))
 
 (defun clasker-show-ticket (ticket)
-  (let ((description (clasker-ticket-headline ticket) )
+  (let ((description (clasker-ticket-headline ticket))
         (timestring
          (let ((secs (clasker-ticket-ago ticket)))
            (if secs (clasker-format-seconds secs) ""))))
     (insert (propertize (concat "  "
                                 description
-                                (make-string (- (window-width) (length description) (length timestring) 3) ?\s)
-                                timestring
+                                (make-string (max 0 (- (window-width) (length description) (length timestring) 3)) ?\s)
+                                (propertize timestring 'face 'compilation-info)
                                 "\n")
                         'clasker-ticket ticket))))
 
