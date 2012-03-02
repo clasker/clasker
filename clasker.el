@@ -99,6 +99,27 @@
       (setcdr (assoc property (slot-value ticket 'properties)) value)
     (clasker-ticket--add-property ticket property value)))
 
+
+(defun clasker--quote-string (string)
+  (replace-regexp-in-string "\n" "\\\\n" 
+   (replace-regexp-in-string "\\\\" "\\\\\\\\" string)))
+
+(defun clasker--unquote-string (string)
+  (with-temp-buffer
+    (insert string)
+    (goto-char (point-min))
+    (while (search-forward "\\" nil t)
+      (case (char-after)
+        (?n
+         (delete-backward-char 1)
+         (delete-forward-char 1)
+         (newline))
+        (t
+         (delete-backward-char 1)
+         (forward-char))))
+    (buffer-string)))
+
+
 (defmethod clasker-save-ticket ((ticket clasker-ticket))
   (let ((line (oref ticket line)))
     (with-temp-file clasker-file
