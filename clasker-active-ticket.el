@@ -6,7 +6,7 @@
 ;; (add-hook 'clasker-deactivate-ticket-hook 'foo)
 
 (defmethod clasker-active-p ((ticket clasker-ticket))
-  (eq clasker-active-ticket ticket))
+  (equal clasker-active-ticket ticket))
 
 (defun clasker-deactivate-ticket (ticket)
   (run-hooks 'clasker-deactivate-ticket-hook)
@@ -19,6 +19,7 @@
 
   (clasker-ticket-set-property ticket 'active t)
   (setq clasker-active-ticket ticket)
+  (clasker-save-ticket ticket)
   (run-hooks 'clasker-activate-ticket-hook))
 
 (defun clasker-pomodoro-initialize ()
@@ -26,5 +27,5 @@
    '("Activate" . clasker-activate-ticket )
    clasker-default-actions))
 
-;(clasker-pomodoro-initialize)
+(clasker-pomodoro-initialize)
 (provide 'clasker-active-ticket)

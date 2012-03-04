@@ -56,7 +56,7 @@
 
 (require 'eieio)
 (require 'clasker-edit)
-(require 'clasker-active-ticket)
+
 
 (defgroup clasker nil
   "Experimental task management."
@@ -414,6 +414,7 @@ list of tickets to be shown in the current view.")
   (clasker-mode)
   (clasker-revert))
 
+(require 'clasker-active-ticket)
 (provide 'clasker)
 
 ;;; Local variables:
