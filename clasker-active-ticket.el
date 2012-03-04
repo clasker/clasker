@@ -10,14 +10,14 @@
 
 (defun clasker-deactivate-ticket (ticket)
   (run-hooks 'clasker-deactivate-ticket-hook)
-  (clasker-ticket-set-property ticket '(active . nil)))
+  (clasker-ticket-set-property ticket 'active nil))
 
 (defun clasker-activate-ticket (ticket)
   (when (and clasker-active-ticket
              (not  (eq clasker-active-ticket ticket)))
     (clasker-deactivate-ticket clasker-active-ticket))
 
-  (clasker-ticket-set-property ticket '(active . t))
+  (clasker-ticket-set-property ticket 'active t)
   (setq clasker-active-ticket ticket)
   (run-hooks 'clasker-activate-ticket-hook))
 
