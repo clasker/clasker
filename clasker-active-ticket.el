@@ -27,4 +27,4 @@
    clasker-default-actions))
 
 ;(clasker-pomodoro-initialize)
-(provide 'clasker-pomodoro)
+(provide 'clasker-active-ticket)

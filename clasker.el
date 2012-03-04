@@ -56,6 +56,7 @@
 
 (require 'eieio)
 (require 'clasker-edit)
+(require 'clasker-active-ticket)
 
 (defgroup clasker nil
   "Experimental task management."
