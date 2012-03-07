@@ -267,7 +267,10 @@
 list of tickets to be shown in the current view.")
 
 (defun clasker-default-view ()
-  (clasker-load-tickets))
+  (sort (clasker-load-tickets)
+        (lambda (t1 t2)
+          (>= (clasker-ticket-ago t1)
+              (clasker-ticket-ago t2)))))
 
 (defun clasker-current-view ()
   (funcall clasker-view-function))
@@ -337,7 +340,7 @@ list of tickets to be shown in the current view.")
                    ))))
 
 (defun clasker-show-tickets (list)
-  (dolist (ticket (reverse list))
+  (dolist (ticket list)
     (clasker-show-ticket ticket)))
 
 (defun clasker-revert (&optional ignore-auto noconfirm)
@@ -346,7 +349,7 @@ list of tickets to be shown in the current view.")
         (inhibit-read-only t))
     (erase-buffer)
     (insert (propertize "Clasker\n" 'face 'info-title-1) "\n")
-    (clasker-show-tickets (clasker-current-view ))
+    (clasker-show-tickets (clasker-current-view))
     (run-hooks 'clasker-display-hook)
     (goto-char (min position (point-max)))))
 
