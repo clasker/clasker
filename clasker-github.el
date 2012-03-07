@@ -29,7 +29,7 @@
 
 (defun clasker-github-issue-to-ticket (issue)
   (let ((ticket (make-instance 'clasker-ticket))
-        (desc (replace-regexp-in-string "" "" (cdr (assq 'body issue)))))
+        (desc (replace-regexp-in-string "" "" (cdr (assq 'title issue)))))
     (clasker-ticket-set-property ticket 'description desc)
     ticket))
 
