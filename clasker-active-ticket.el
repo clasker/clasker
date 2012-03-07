@@ -32,11 +32,16 @@
 ;; (add-hook 'clasker-deactivate-ticket-hook 'foo)
 
 (defmethod clasker-active-p ((ticket clasker-ticket))
-  (equal clasker-active-ticket ticket))
+  (equal (slot-value clasker-active-ticket 'line) (slot-value ticket 'line)))
 
 (defun clasker-deactivate-ticket (ticket)
   (run-hooks 'clasker-deactivate-ticket-hook)
-  (clasker-ticket-set-property ticket 'active nil))
+  (when (clasker-active-p ticket)
+    (setq clasker-active-ticket nil))
+  (clasker-ticket-set-property ticket 'active nil)
+                                        ; (clasker-save-ticket ticket)
+                                        ; ;; if we save it, it gets duplicated
+  )
 
 (defun clasker-activate-ticket (ticket)
   (when (and clasker-active-ticket
@@ -48,7 +53,23 @@
   (clasker-save-ticket ticket)
   (run-hooks 'clasker-activate-ticket-hook))
 
+(defun clasker-highlight-active-ticket ()
+  (interactive)
+  (when clasker-active-ticket
+    (with-current-buffer "*Clasker*"
+      (let ((inhibit-read-only t))
+        (beginning-of-buffer)
+        (search-forward "\n\n")
+
+;        (clasker-next-ticket)
+        (while (and
+                (not (clasker-active-p (get-text-property (point) 'clasker-ticket)))
+                (not (eq (point) (point-max))))
+          (clasker-next-ticket))
+        (put-text-property (point) (clasker-next-ticket) 'face 'bold)))))
+
 (defun clasker-pomodoro-initialize ()
+  (add-hook 'clasker-display-hook 'clasker-highlight-active-ticket)
   (push
    '("Activate" . clasker-activate-ticket )
    clasker-default-actions))
