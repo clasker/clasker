@@ -99,6 +99,10 @@
       (setcdr (assoc property (slot-value ticket 'properties)) value)
     (clasker-ticket--add-property ticket property value)))
 
+(defmethod clasker-ticket-delete-property ((ticket clasker-ticket) property)
+  (let ((property-list (slot-value ticket 'properties)))
+    (when (assoc property property-list)
+      (oset ticket properties (assq-delete-all property (slot-value ticket 'properties))))))
 
 (defun clasker--quote-string (string)
   (replace-regexp-in-string "\n" "\\\\n"
