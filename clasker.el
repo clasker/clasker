@@ -314,7 +314,7 @@ list of tickets to be shown in the current view.")
             (progn
               (princ (format "%d%s" value1 name1))
               (unless (or (null value2) (zerop value2))
-                (princ (format "%3d%s" value2 name2))))))))
+                (princ (format " %d%s" value2 name2))))))))
 
 (defun clasker-ticket-headline (ticket)
   (let* ((lines (split-string (clasker-ticket-description ticket) "\n"))
