@@ -36,12 +36,12 @@
 
 (defun clasker-deactivate-ticket (ticket)
   (run-hooks 'clasker-deactivate-ticket-hook)
+
   (when (clasker-active-p ticket)
     (setq clasker-active-ticket nil))
-  (clasker-ticket-set-property ticket 'active nil)
-                                        ; (clasker-save-ticket ticket)
-                                        ; ;; if we save it, it gets duplicated
-  )
+
+  (clasker-ticket-delete-property ticket 'active)
+  (clasker-save-ticket ticket))
 
 (defun clasker-activate-ticket (ticket)
   (when (and clasker-active-ticket
