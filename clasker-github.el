@@ -27,11 +27,28 @@
 (require 'clasker)
 (require 'json)
 
+(defun clasker-iso8601-timestring (string)
+  (save-match-data
+    (string-match "^\\([[:digit:]]\\{4\\}\\)-\\([[:digit:]]\\{2\\}\\)-\\([[:digit:]]\\{2\\}\\)T\\([[:digit:]]\\{2\\}\\):\\([[:digit:]]\\{2\\}\\):\\([[:digit:]]\\{2\\}\\)Z$" string)
+    (encode-time
+     (string-to-number (match-string 6 string))
+     (string-to-number (match-string 5 string))
+     (string-to-number (match-string 4 string))
+     (string-to-number (match-string 3 string))
+     (string-to-number (match-string 2 string))
+     (string-to-number (match-string 1 string))
+     t)))
+
 (defun clasker-github-issue-to-ticket (issue)
-  (let ((ticket (make-instance 'clasker-ticket))
-        (desc (replace-regexp-in-string "" "" (cdr (assq 'title issue)))))
-    (clasker-ticket-set-property ticket 'description desc)
+  (let ((ticket (make-instance 'clasker-ticket)))
+    (clasker-ticket-set-property ticket 'description
+                                 (replace-regexp-in-string "" "" (cdr (assq 'title issue))))
+    (clasker-ticket-set-property ticket 'timestamp
+                                 (and (assq 'created_at issue)
+                                      (clasker-iso8601-timestring (cdr (assq 'created_at issue)))))
     ticket))
+
+(clasker-iso8601-timestring "2011-04-10T20:09:31Z")
 
 (defun clasker-import-from-github (source)
   "Import a list of issues from a user/project in github."
