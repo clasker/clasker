@@ -139,7 +139,8 @@
                          (string (prin1-to-string (clasker--quote-string (cdr property))))
                          (t (prin1-to-string (cdr property))))))
             (insert "(" key " . " value ")")))
-        (insert ")\n")))))
+        (insert ")")
+        (unless line (insert "\n"))))))
 
 
 (defun clasker-load-tickets (&optional filename)
