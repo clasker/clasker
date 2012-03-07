@@ -48,15 +48,13 @@
                                       (clasker-iso8601-timestring (cdr (assq 'created_at issue)))))
     ticket))
 
-(clasker-iso8601-timestring "2011-04-10T20:09:31Z")
-
 (defun clasker-import-from-github (source)
   "Import a list of issues from a user/project in github."
   (interactive "MRepository (user/project): ")
   (let* ((user/project (split-string source "/"))
          (url (concat "https://api.github.com/repos/"
                       (first user/project) "/" (second user/project)
-                      "/issues"))
+                      "/issues?per_page=100"))
          (buffer (url-retrieve-synchronously url)))
     (with-current-buffer buffer
       (search-forward "\n\n")
