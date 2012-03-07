@@ -116,11 +116,11 @@
     (while (search-forward "\\" nil t)
       (case (char-after)
         (?n
-         (delete-backward-char 1)
-         (delete-forward-char 1)
+         (delete-char -1)
+         (delete-char 1)
          (newline))
         (t
-         (delete-backward-char 1)
+         (delete-char -1)
          (forward-char))))
     (buffer-string)))
 
@@ -251,12 +251,12 @@
          (erase-buffer)
          ,@body))))
 
+(defvar current-ticket)
 (defun clasker-action-edit (ticket)
   (clasker-with-new-window "*Clasker Edit*" 10
     (clasker-edit-mode)
     (set (make-local-variable 'current-ticket) ticket)
     (insert (clasker-ticket-description ticket))))
-
 
 
 ;;;; Views
