@@ -334,7 +334,7 @@ list of tickets to be shown in the current view.")
     (insert (propertize (concat "  "
                                 description
                                 (make-string (max 0 (- (window-width) (length description) (length timestring) 3)) ?\s)
-                                (propertize timestring 'face 'compilation-info)
+                                (propertize timestring 'font-lock-face 'compilation-info)
                                 "\n")
                    'clasker-ticket ticket
                    ))))
@@ -348,7 +348,7 @@ list of tickets to be shown in the current view.")
   (let ((position (point))
         (inhibit-read-only t))
     (erase-buffer)
-    (insert (propertize "Clasker\n" 'face 'info-title-1) "\n")
+    (insert (propertize "Clasker\n" 'font-lock-face 'info-title-1) "\n")
     (clasker-show-tickets (clasker-current-view))
     (run-hooks 'clasker-display-hook)
     (goto-char (min position (point-max)))))
@@ -381,6 +381,30 @@ list of tickets to be shown in the current view.")
   (let ((position (previous-single-property-change (point) 'clasker-ticket)))
     (and position (goto-char position))))
 
+
+(defun clasker-mark-ticket (arg)
+  ;; TODO: Fix to work with negative arguments.
+  (interactive "p")
+  (dotimes (i arg)
+    (when (get-text-property (point) 'clasker-ticket)
+      (beginning-of-line)
+      (let ((inhibit-read-only t))
+        (delete-char 1)
+        (insert "*"))
+      (clasker-next-ticket))))
+
+(defun clasker-unmark-ticket (arg)
+  ;; TODO: Fix to work with negative arguments.
+  (interactive "p")
+  (dotimes (i arg)
+    (when (get-text-property (point) 'clasker-ticket)
+      (beginning-of-line)
+      (let ((inhibit-read-only t))
+        (delete-char 1)
+        (insert " "))
+      (clasker-next-ticket))))
+
+
 (defun clasker-do ()
   (interactive)
   (let ((clasker-inhibit-confirm t)
@@ -401,15 +425,23 @@ list of tickets to be shown in the current view.")
     (define-key map (kbd "c") 'clasker-new-tickets)
     (define-key map (kbd "q") 'clasker-quit)
     (define-key map (kbd "n") 'clasker-next-ticket)
+    (define-key map (kbd "m") 'clasker-mark-ticket)
+    (define-key map (kbd "u") 'clasker-unmark-ticket)
     (define-key map (kbd "p") 'clasker-previous-ticket)
     (define-key map (kbd "C-c C-f") 'clasker-open-file)
     (define-key map (kbd "RET") 'clasker-do)
     map)
   "docstring")
 
+(defvar clasker-font-lock-keywords
+  (list
+   (list "^\\(\\*\\).*$" '(1 dired-mark-face)))
+  "Additional expressions to highlight in Clasker mode.")
+
 (define-derived-mode clasker-mode special-mode "Clasker"
   "docstring"
   (set (make-local-variable 'revert-buffer-function) 'clasker-revert)
+  (set (make-local-variable 'font-lock-defaults) '(clasker-font-lock-keywords t nil nil beginning-of-line))
   (set (make-local-variable 'clasker-view-function) 'clasker-default-view))
 
 (defun clasker ()
