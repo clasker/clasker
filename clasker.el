@@ -45,11 +45,11 @@
 ;;; optional ticket synchronization. Sources are described by instances of the
 ;;; `clasker-source' class. The generic functions `clasker-source-fetch-tickets'
 ;;; and `clasker-source-push-ticket' are provided for synchronization.
-;;; 
+;;;
 ;;; Finally, no every ticket has to be list in the clasker buffer. A buffer
 ;;; local variable `clasker-view-function' is supposed to keep a function which
 ;;; will return the list of tickets to show.
-;;; 
+;;;
 
 (eval-when-compile
   (require 'cl))
@@ -101,7 +101,7 @@
 
 
 (defun clasker--quote-string (string)
-  (replace-regexp-in-string "\n" "\\\\n" 
+  (replace-regexp-in-string "\n" "\\\\n"
    (replace-regexp-in-string "\\\\" "\\\\\\\\" string)))
 
 (defun clasker--unquote-string (string)
