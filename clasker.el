@@ -198,7 +198,8 @@
 ;;;; Actions
 
 (defvar clasker-default-actions
-  '(("Edit" . clasker-action-edit)))
+  '(("Archive" . clasker-action-archive)
+    ("Edit" . clasker-action-edit)))
 
 (defvar clasker-inhibit-confirm nil)
 (defun clasker-confirm (prompt)
@@ -258,6 +259,9 @@
     (set (make-local-variable 'current-ticket) ticket)
     (insert (clasker-ticket-description ticket))))
 
+(defun clasker-action-archive (ticket)
+  (clasker-ticket-set-property ticket 'archived t)
+  (clasker-save-ticket ticket))
 
 ;;;; Views
 
@@ -336,8 +340,8 @@ list of tickets to be shown in the current view.")
                                 (make-string (max 0 (- (window-width) (length description) (length timestring) 3)) ?\s)
                                 (propertize timestring 'font-lock-face 'compilation-info)
                                 "\n")
-                   'clasker-ticket ticket
-                   ))))
+                        'clasker-ticket ticket
+                        'font-lock-face (if (clasker-ticket-get-property ticket 'archived) 'shadow nil)))))
 
 (defun clasker-show-tickets (list)
   (dolist (ticket list)
