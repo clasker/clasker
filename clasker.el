@@ -36,6 +36,10 @@
 ;;;
 ;;;    TIMESTAMP
 ;;;
+;;;    ARCHIVED
+;;;
+;;;    ARCHIVE-TIMESTAMP
+;;; 
 ;;; Two generic functions are provided to manipulate the properties of a ticket:
 ;;; `clasker-ticket-get-property' and `clasker-ticket-set-property'.
 ;;;
@@ -182,6 +186,9 @@
 (defun clasker-ticket-timestamp (ticket)
   (clasker-ticket-get-property ticket 'timestamp))
 
+(defun clasker-ticket-archived-p (ticket)
+  (clasker-ticket-get-property ticket 'archived))
+
 (defun clasker-ticket-ago (ticket)
   (let ((timestamp (clasker-ticket-timestamp ticket)))
     (and timestamp (float-time (time-subtract (current-time) timestamp)))))
@@ -261,6 +268,7 @@
 
 (defun clasker-action-archive (ticket)
   (clasker-ticket-set-property ticket 'archived t)
+  (clasker-ticket-set-property ticket 'archive-timestamp (butlast (current-time)))
   (clasker-save-ticket ticket))
 
 ;;;; Views
@@ -273,8 +281,17 @@ list of tickets to be shown in the current view.")
 (defun clasker-default-view ()
   (sort (clasker-load-tickets)
         (lambda (t1 t2)
-          (>= (clasker-ticket-ago t1)
-              (clasker-ticket-ago t2)))))
+          (cond
+           ((and (not (clasker-ticket-archived-p t1)) (not (clasker-ticket-archived-p t2)))
+            (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2)))
+           ((and (clasker-ticket-archived-p t1) (clasker-ticket-archived-p t2))
+            (if (and (clasker-ticket-get-property t1 'archive-timestamp)
+                     (clasker-ticket-get-property t2 'archive-timestamp))
+                (time-less-p (clasker-ticket-get-property t2 'archive-timestamp)
+                             (clasker-ticket-get-property t1 'archive-timestamp))
+              (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2))))
+           (t
+            (clasker-ticket-archived-p t2))))))
 
 (defun clasker-current-view ()
   (funcall clasker-view-function))
@@ -341,7 +358,7 @@ list of tickets to be shown in the current view.")
                                 (propertize timestring 'font-lock-face 'compilation-info)
                                 "\n")
                         'clasker-ticket ticket
-                        'font-lock-face (if (clasker-ticket-get-property ticket 'archived) 'shadow nil)))))
+                        'font-lock-face (if (clasker-ticket-archived-p ticket) 'shadow nil)))))
 
 (defun clasker-show-tickets (list)
   (dolist (ticket list)
@@ -354,7 +371,7 @@ list of tickets to be shown in the current view.")
     (erase-buffer)
     (insert (propertize "Clasker\n" 'font-lock-face 'info-title-1) "\n")
     (clasker-show-tickets (clasker-current-view))
-    (run-hooks 'clasker-display-hook)
+;    (run-hooks 'clasker-display-hook)
     (goto-char (min position (point-max)))))
 
 (defun clasker-quit ()
