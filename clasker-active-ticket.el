@@ -60,13 +60,11 @@
       (let ((inhibit-read-only t))
         (beginning-of-buffer)
         (search-forward "\n\n")
-
-;        (clasker-next-ticket)
         (while (and
                 (not (clasker-active-p (get-text-property (point) 'clasker-ticket)))
                 (not (eq (point) (point-max))))
           (clasker-next-ticket))
-        (put-text-property (point) (clasker-next-ticket) 'face 'bold)))))
+        (put-text-property (point) (clasker-end-of-ticket) 'face 'bold)))))
 
 (defun clasker-pomodoro-initialize ()
   (add-hook 'clasker-display-hook 'clasker-highlight-active-ticket)
