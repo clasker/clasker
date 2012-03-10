@@ -3,7 +3,7 @@
 ;; Copyright (C) 2012  David Vázquez
 
 ;; Author: David Vázquez <davazp@gmail.com>
-;; Keywords: 
+;; Keywords:
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -20,12 +20,12 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
 
 (require 'clasker)
-(require 'json)
+(require 'gh-issues)
 
 (defun clasker-iso8601-timestring (string)
   (save-match-data
@@ -42,28 +42,29 @@
 (defun clasker-github-issue-to-ticket (issue)
   (let ((ticket (make-instance 'clasker-ticket)))
     (clasker-ticket-set-property ticket 'description
-                                 (replace-regexp-in-string "" "" (cdr (assq 'title issue))))
+                                 (concat (oref issue title) "\n" (replace-regexp-in-string "" "" (oref issue body))))
     (clasker-ticket-set-property ticket 'timestamp
-                                 (and (assq 'created_at issue)
-                                      (clasker-iso8601-timestring (cdr (assq 'created_at issue)))))
+                                 (and (oref issue created_at)
+                                      (clasker-iso8601-timestring  (oref issue created_at))))
     ticket))
 
 (defun clasker-import-from-github (source)
   "Import a list of issues from a user/project in github."
   (interactive "MRepository (user/project): ")
-  (let* ((user/project (split-string source "/"))
-         (url (concat "https://api.github.com/repos/"
-                      (first user/project) "/" (second user/project)
-                      "/issues?per_page=100"))
-         (buffer (url-retrieve-synchronously url)))
-    (with-current-buffer buffer
-      (search-forward "\n\n")
-      (let* ((json-array-type 'list)
-             (project-issues (json-read))
-             (tickets (mapcar 'clasker-github-issue-to-ticket project-issues)))
-        (mapc 'clasker-save-ticket tickets)))
-    (clasker-revert)))
+  (let* ((gh-api (gh-issues-api2))
+         (user/project (split-string source "/"))
+         (response (apply #'gh-issues-list gh-api user/project)))
+    (gh-api-add-response-callback  response 'clasker-save-github)))
 
+(defun clasker-save-github (issues)
+  (interactive)
+  (dolist (issue issues)
+    (clasker-save-ticket
+     (clasker-github-issue-to-ticket issue)))
+  (clasker-revert))
+
+(defun hola ()
+  (setq issues (gh-issues-list api "kidd" "readerly")))
 
 (provide 'clasker-github)
 ;;; clasker-github.el ends here
