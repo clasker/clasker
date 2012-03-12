@@ -66,5 +66,8 @@
 (defun hola ()
   (setq issues (gh-issues-list api "kidd" "readerly")))
 
+(defun gh-issues-api2 (&optional sync)
+  (gh-issues-api "api" :sync sync :cache nil :num-retries 1))
+
 (provide 'clasker-github)
 ;;; clasker-github.el ends here
