@@ -46,6 +46,7 @@
     (clasker-ticket-set-property ticket 'timestamp
                                  (and (oref issue created_at)
                                       (clasker-iso8601-timestring  (oref issue created_at))))
+    (clasker-ticket-set-property ticket 'github-id (oref issue number))
     ticket))
 
 (defun clasker-import-from-github (source)
@@ -54,14 +55,32 @@
   (let* ((gh-api (gh-issues-api2))
          (user/project (split-string source "/"))
          (response (apply #'gh-issues-list gh-api user/project)))
-    (gh-api-add-response-callback  response 'clasker-save-github)))
+    (gh-api-add-response-callback  response 'clasker-github-save-ticket)))
 
-(defun clasker-save-github (issues)
+(defun clasker--github-tickets ()
+  (let ((table (make-hash-table))
+        (tickets (clasker-load-tickets)))
+    (dolist (ticket tickets)
+      (puthash (clasker-ticket-get-property ticket 'github-id) ticket table))
+    table))
+
+(defun clasker-github-save-ticket (issues)
   (interactive)
-  (dolist (issue issues)
-    (clasker-save-ticket
-     (clasker-github-issue-to-ticket issue)))
+  (let ((gh-tickets (clasker--github-tickets)))
+    (dolist (issue issues)
+      (let* ((gh-issue (clasker-github-issue-to-ticket issue))
+             (clasker-ticket (gethash (clasker-ticket-get-property gh-issue 'github-id) gh-tickets)))
+        (clasker-save-ticket
+         (if clasker-ticket
+             (clasker-github-update-ticket clasker-ticket gh-issue)
+           gh-issue)))))
   (clasker-revert))
+
+
+(defun clasker-github-update-ticket (ticket other)
+  (clasker-ticket-set-property ticket 'description
+                               (clasker-ticket-get-property other 'description))
+  ticket)
 
 (defun hola ()
   (setq issues (gh-issues-list api "kidd" "readerly")))
