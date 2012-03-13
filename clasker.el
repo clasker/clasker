@@ -32,6 +32,14 @@
 ;;; customized by clasker modules or the user. Some properties have a special
 ;;; meaning in clasker, as they are used across the whole project.
 ;;;
+;;;    CLASSES
+;;;
+;;;        A list of Lisp symbols. When a property is searched in a ticket and
+;;;        it is not present, then the propery list of the symbols will be
+;;;        browsed in order to find a value for the requested property. So, the
+;;;        properties of a symbol are effective properties of the tickets which
+;;;        belong to that class.
+;;;
 ;;;    DESCRIPTION
 ;;;
 ;;;    TIMESTAMP
@@ -39,7 +47,7 @@
 ;;;    ARCHIVED
 ;;;
 ;;;    ARCHIVE-TIMESTAMP
-;;; 
+;;;
 ;;; Two generic functions are provided to manipulate the properties of a ticket:
 ;;; `clasker-ticket-get-property' and `clasker-ticket-set-property'.
 ;;;
@@ -60,7 +68,6 @@
 
 (require 'eieio)
 (require 'clasker-edit)
-
 
 (defgroup clasker nil
   "Experimental task management."
@@ -97,7 +104,15 @@
   (object-add-to-list ticket 'properties (cons property value)))
 
 (defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name)
-  (cdr (assq property-name (slot-value ticket 'properties))))
+  (let ((direct-entry (assq property-name (slot-value ticket 'properties))))
+    (if direct-entry
+        (cdr direct-entry)
+      (let ((classes (clasker-ticket-classes ticket))
+            (prop nil))
+        (while (and classes (not prop))
+          (setq prop (get (first classes) property-name))
+          (setq classes (rest classes)))
+        prop))))
 
 (defmethod clasker-ticket-set-property ((ticket clasker-ticket) property value)
   (if (assoc property (slot-value ticket 'properties))
@@ -179,6 +194,9 @@
 
 
 ;;; Special properties
+
+(defun clasker-ticket-classes (ticket)
+  (clasker-ticket-get-property ticket 'classes))
 
 (defun clasker-ticket-description (ticket)
   (clasker-ticket-get-property ticket 'description))
