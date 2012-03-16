@@ -64,7 +64,7 @@
                 (not (clasker-active-p (get-text-property (point) 'clasker-ticket)))
                 (not (eq (point) (point-max))))
           (clasker-next-ticket))
-        (put-text-property (point) (clasker-end-of-ticket) 'face 'bold)))))
+        (put-text-property (point) (clasker-end-of-ticket) 'font-lock-face 'bold)))))
 
 (defun clasker-pomodoro-initialize ()
   (add-hook 'clasker-display-hook 'clasker-highlight-active-ticket)
