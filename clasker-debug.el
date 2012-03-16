@@ -26,12 +26,6 @@
 
 (defvar clasker-debug-info 'description "property that is shown in tooltip")
 
-(defun clasker-debug-end-of-ticket ()
-  (interactive)
-  (let ((end  (next-single-property-change (point) 'clasker-ticket)))
-    (goto-char  (1- (or end
-                     (point-max))))))
-
 (defun clasker-debug-tooltips ()
   (interactive)
   (with-current-buffer "*Clasker*"
@@ -42,7 +36,7 @@
                          (get-text-property (progn
                                               (clasker-next-ticket) (point))
                                             'clasker-ticket )))
-        (put-text-property (point) (clasker-debug-end-of-ticket) 'help-echo
+        (put-text-property (point) (clasker-end-of-ticket) 'help-echo
                            (clasker-ticket-get-property
                             (get-text-property (point) 'clasker-ticket)
                             clasker-debug-info))))))
