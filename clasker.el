@@ -398,8 +398,9 @@ list of tickets to be shown in the current view.")
 
 (defun clasker-end-of-ticket ()
   (interactive)
-  (goto-char  (or (1- (next-single-property-change (point) 'clasker-ticket))
-       (end-of-buffer))))
+  (let ((end  (next-single-property-change (point) 'clasker-ticket)))
+    (goto-char  (1- (or end
+                     (point-max))))))
 
 (defun clasker-mark-ticket-pos ()
   (interactive)
