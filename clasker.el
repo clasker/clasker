@@ -389,7 +389,7 @@ list of tickets to be shown in the current view.")
     (erase-buffer)
     (insert (propertize "Clasker\n" 'font-lock-face 'info-title-1) "\n")
     (clasker-show-tickets (clasker-current-view))
-;    (run-hooks 'clasker-display-hook)
+    (run-hooks 'clasker-display-hook)
     (goto-char (min position (point-max)))))
 
 (defun clasker-quit ()
@@ -408,6 +408,24 @@ list of tickets to be shown in the current view.")
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
           (clasker-save-ticket ticket)
           (clasker-revert))))))
+
+(defun clasker-beginning-of-ticket ()
+  (interactive)
+  (goto-char (or (previous-single-property-change (1+ (point)) 'clasker-ticket)
+       (point-min))))
+
+(defun clasker-end-of-ticket ()
+  (interactive)
+  (let ((end  (next-single-property-change (point) 'clasker-ticket)))
+    (goto-char  (1- (or end
+                     (point-max))))))
+
+(defun clasker-mark-ticket-pos ()
+  (interactive)
+  (let ((begin  (clasker-beginning-of-ticket))
+        (end (clasker-end-of-ticket)))
+    (push-mark (clasker-beginning-of-ticket) t nil)
+    (goto-char end)))
 
 (defun clasker-next-ticket ()
   (interactive)
