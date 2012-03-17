@@ -26,7 +26,7 @@
 
 (require 'clasker)
 (require 'gh-issues)
-
+(require 'gh-auth)
 (defun clasker-iso8601-timestring (string)
   (save-match-data
     (string-match "^\\([[:digit:]]\\{4\\}\\)-\\([[:digit:]]\\{2\\}\\)-\\([[:digit:]]\\{2\\}\\)T\\([[:digit:]]\\{2\\}\\):\\([[:digit:]]\\{2\\}\\):\\([[:digit:]]\\{2\\}\\)Z$" string)
@@ -41,20 +41,29 @@
 
 (defun clasker-github-issue-to-ticket (issue)
   (let ((ticket (make-instance 'clasker-ticket)))
-    (clasker-ticket-set-property ticket 'description
-                                 (concat (oref issue title) "\n" (replace-regexp-in-string "" "" (oref issue body))))
+    (clasker-ticket-set-property
+     ticket
+     'description
+     (concat (oref issue title) "\n"
+             (replace-regexp-in-string "" ""
+                                       (or
+                                        (oref issue body)
+                                        ""))))
     (clasker-ticket-set-property ticket 'timestamp
                                  (and (oref issue created_at)
                                       (clasker-iso8601-timestring  (oref issue created_at))))
     (clasker-ticket-set-property ticket 'github-id (oref issue number))
     ticket))
 
+(defmethod slot-unbound ((issue gh-issues-issue) class name fn)
+  "")
+
 (defun clasker-import-from-github (source)
   "Import a list of issues from a user/project in github."
   (interactive "MRepository (user/project): ")
   (let* ((gh-api (gh-issues-api2))
          (user/project (split-string source "/"))
-         (response (apply #'gh-issues-list gh-api user/project)))
+         (response (apply #'gh-issues-issue-list gh-api user/project)))
     (gh-api-add-response-callback  response 'clasker-github-save-ticket)))
 
 (defun clasker--github-tickets ()
@@ -76,6 +85,8 @@
            gh-issue)))))
   (clasker-revert))
 
+(defmethod clasker-github-save-ticket-to-github ((ticket )))
+
 
 (defun clasker-github-update-ticket (ticket other)
   (clasker-ticket-set-property ticket 'description
@@ -85,8 +96,8 @@
 (defun hola ()
   (setq issues (gh-issues-list api "kidd" "readerly")))
 
-(defun gh-issues-api2 (&optional sync)
-  (gh-issues-api "api" :sync sync :cache nil :num-retries 1))
+(defun gh-issues-api2 (&optional sync auth)
+  (gh-issues-api "api" :sync sync :cache nil :auth (make-instance 'gh-oauth-authenticator) :num-retries 1))
 
 (provide 'clasker-github)
 ;;; clasker-github.el ends here
