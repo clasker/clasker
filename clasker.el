@@ -259,8 +259,8 @@
 (defun clasker-ticket-parent (ticket)
   (let ((refer (clasker-ticket-get-property ticket 'parent)))
     ;; Complete refer with the filename to be of the form (filename lineno).
-    (when (integerp ref)
-      (setq refer (list (oref ticket 'filename) refer)))
+    (when (integerp refer)
+      (setq refer (list (oref ticket filename) refer)))
     (clasker-resolve-id refer)))
 
 (defun clasker-ticket-timestamp (ticket)
