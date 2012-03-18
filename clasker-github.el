@@ -1,8 +1,10 @@
 ;;; clasker-github.el --- Github backend for Clasker
 
 ;; Copyright (C) 2012  David Vázquez
+;; Copyright (C) 2012  Raimon Grau
 
 ;; Author: David Vázquez <davazp@gmail.com>
+;;         Raimon Grau <raimonster@gmail.com>
 ;; Keywords:
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -19,6 +21,12 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
+
+;; Add support for github issues. It adds new github isses as tickets,
+;; and if you use magit, it prepends the number of github-issue in the
+;; commit log buffer
+;;
+
 
 ;;
 
@@ -85,19 +93,44 @@
            gh-issue)))))
   (clasker-revert))
 
+;;; TODO: NIY
 (defmethod clasker-github-save-ticket-to-github ((ticket )))
 
+(defun gh-issues-api2 (&optional sync auth)
+  (gh-issues-api "api" :sync sync :cache nil :auth (make-instance 'gh-oauth-authenticator) :num-retries 1))
 
 (defun clasker-github-update-ticket (ticket other)
   (clasker-ticket-set-property ticket 'description
                                (clasker-ticket-get-property other 'description))
   ticket)
 
-(defun hola ()
-  (setq issues (gh-issues-list api "kidd" "readerly")))
+;;; Magit support
 
-(defun gh-issues-api2 (&optional sync auth)
-  (gh-issues-api "api" :sync sync :cache nil :auth (make-instance 'gh-oauth-authenticator) :num-retries 1))
+(featurep
+ 'magit
+ (defun clasker-github-magit-log-edit-append (str)
+   (with-current-buffer (get-buffer-create magit-log-edit-buffer-name)
+     (goto-char (point-min))
+     (insert str)))
+
+ (defmethod clasker-github-get-property-in-hierarchy ((ticket clasker-ticket) property)
+   (let ((ticket-property (clasker-ticket-get-property ticket property)))
+     (or ticket-property
+         (when (clasker-ticket-parent ticket)
+           (clasker-github-get-property-in-hierarchy
+            (clasker-ticket-parent ticket)
+            property)))))
+
+ (defun clasker-github-set-description-on-magit-commit ()
+   (when clasker-active-ticket
+     (let ((github-id (clasker-github-get-property-in-hierarchy
+                       clasker-active-ticket 'github-id) ))
+       (if github-id
+           (clasker-github-magit-log-edit-append
+            (concat "[#" (number-to-string
+                          github-id) "]"))))))
+
+ (add-hook 'magit-log-edit-mode-hook 'clasker-github-set-description-on-magit-commit))
 
 (provide 'clasker-github)
 ;;; clasker-github.el ends here
