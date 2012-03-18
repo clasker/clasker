@@ -116,6 +116,9 @@
 (defvar clasker-ticket-table
   (make-hash-table :test 'equal :weakness 'value))
 
+(defun clasker-ticket-id (ticket)
+  (list (oref ticket filename) (oref ticket line)))
+
 (defun clasker-intern-ticket (id)
   (when id
     (or (gethash id clasker-ticket-table)
@@ -488,6 +491,25 @@ list of tickets to be shown in the current view.")
           (clasker-save-ticket ticket)
           (clasker-revert))))))
 
+(defun clasker-new-child-tickets ()
+  (interactive)
+  (let ((actives (clasker-active-tickets))
+        parent-id end ticket)
+    (if (= (length actives) 1)
+        (setq parent-id (clasker-ticket-id (first actives)))
+      (error "The parent for the tickets is not well defined."))
+    (while (not end)
+      (let ((description (read-string "Description (or RET to finish): " nil nil :no-more-input)))
+        (if (eq description :no-more-input)
+            (setf end t)
+          (setf ticket (make-instance 'clasker-ticket))
+          (clasker-ticket-set-property ticket 'description description)
+          (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
+          (clasker-ticket-set-property ticket 'parent parent-id)
+          (clasker-save-ticket ticket)
+          (clasker-revert))))))
+
+
 (defun clasker-beginning-of-ticket ()
   (interactive)
   (goto-char (or (previous-single-property-change (1+ (point)) 'clasker-ticket)
@@ -564,6 +586,7 @@ list of tickets to be shown in the current view.")
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "g") 'revert-buffer)
     (define-key map (kbd "c") 'clasker-new-tickets)
+    (define-key map (kbd "C") 'clasker-new-child-tickets)
     (define-key map (kbd "q") 'clasker-quit)
     (define-key map (kbd "n") 'clasker-next-ticket)
     (define-key map (kbd "m") 'clasker-mark-ticket)
