@@ -83,6 +83,7 @@
   :group 'applications)
 
 
+
 ;;;; Tickets
 
 (defcustom clasker-file "~/.clasker"
@@ -107,6 +108,50 @@
     :initarg :properties
     :initform ()
     :type list)))
+
+
+;;; This variable keeps a weak hash table which associates ticket identifiers as
+;;; (FILENAME lineno) with the ticket objects itself. It is useful to reload
+;;; tickets from disks preserving the eq-identity.
+(defvar clasker-ticket-table
+  (make-hash-table :test 'equal :weakness 'value))
+
+(defun clasker-intern-ticket (id)
+  (when id
+    (or (gethash id clasker-ticket-table)
+        (puthash id (make-instance 'clasker-ticket) clasker-ticket-table))))
+
+;;; Load an individual ticket given by the identifier ID. It could modify
+;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
+(defun clasker-load-id (id)
+  (let ((filename (or (car id) clasker-file))
+        (lineno (cadr id)))
+    (when (file-readable-p filename)
+      (with-temp-buffer
+        (insert-file-contents filename)
+        (goto-char (point-min))
+        (next-line (1- lineno))
+        (ignore-errors
+          (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
+                 (raw-props (read-from-whole-string line))
+                 (props (mapcar (lambda (prop)
+                                  (cons (car prop)
+                                        (if (stringp (cdr prop))
+                                            (clasker--unquote-string (cdr prop))
+                                          (cdr prop))))
+                                raw-props))
+                 (ticket (clasker-intern-ticket id)))
+            (oset ticket properties props)
+            (oset ticket filename filename)
+            (oset ticket line (line-number-at-pos))
+            ticket))))))
+
+;;; Resolve a ticket identifier. It is like `clasker-load-id', but it tries not
+;;; to load the ticket from disk if it has been loaded already, so it does not
+;;; modify ticket objects.
+(defun clasker-resolve-id (id)
+  (or (gethash id clasker-ticket-table) (clasker-load-id)))
+
 
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
@@ -194,7 +239,8 @@
                                                 (clasker--unquote-string (cdr prop))
                                               (cdr prop))))
                                     raw-props))
-                     (ticket (make-instance 'clasker-ticket :properties props)))
+                     (ticket (clasker-intern-ticket (list filename (line-number-at-pos)))))
+                (oset ticket properties props)
                 (oset ticket filename filename)
                 (oset ticket line (line-number-at-pos))
                 (push ticket tickets)))
