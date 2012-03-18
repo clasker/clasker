@@ -106,24 +106,15 @@
 
 ;;; Magit support
 
-(featurep
- 'magit
+(when (featurep 'magit)
  (defun clasker-github-magit-log-edit-append (str)
    (with-current-buffer (get-buffer-create magit-log-edit-buffer-name)
      (goto-char (point-min))
      (insert str)))
 
- (defmethod clasker-github-get-property-in-hierarchy ((ticket clasker-ticket) property)
-   (let ((ticket-property (clasker-ticket-get-property ticket property)))
-     (or ticket-property
-         (when (clasker-ticket-parent ticket)
-           (clasker-github-get-property-in-hierarchy
-            (clasker-ticket-parent ticket)
-            property)))))
-
  (defun clasker-github-set-description-on-magit-commit ()
    (when clasker-active-ticket
-     (let ((github-id (clasker-github-get-property-in-hierarchy
+     (let ((github-id (clasker-ticket-get-property-in-hierarchy
                        clasker-active-ticket 'github-id) ))
        (if github-id
            (clasker-github-magit-log-edit-append

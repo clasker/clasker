@@ -53,11 +53,15 @@
 ;;;       Specify a hierarchy relationship with other ticket. If it is an
 ;;;       integer, it refers to the ticket stored in the same file with that
 ;;;       line number. It could also specify the file explicitly if the value is
-;;;       a list as ("<FILENAME>" <integer>).
+;;;       a list as ("<FILENAME>" <integer>). The recommended way to look for a
+;;;       property value in nearest ancestor is
+;;;       `clasker-ticket-get-property-in-hierarchy'.
 ;;;
 ;;;
 ;;; Two generic functions are provided to manipulate the properties of a ticket:
 ;;; `clasker-ticket-get-property' and `clasker-ticket-set-property'.
+;;;
+;;; There's also support for hierarchies in tickets. The recommended way to look
 ;;;
 ;;; Tickets can be created by the user, but they are more often collected from
 ;;; several _sources_. Sources could be other local files, remote task systems,
@@ -180,6 +184,14 @@
   (let ((property-list (slot-value ticket 'properties)))
     (when (assoc property property-list)
       (oset ticket properties (assq-delete-all property (slot-value ticket 'properties))))))
+
+(defmethod clasker-ticket-get-property-in-hierarchy ((ticket clasker-ticket) property)
+   (let ((ticket-property (clasker-ticket-get-property ticket property)))
+     (or ticket-property
+         (when (clasker-ticket-parent ticket)
+           (clasker-ticket-get-property-in-hierarchy
+            (clasker-ticket-parent ticket)
+            property)))))
 
 (defun clasker--quote-string (string)
   (replace-regexp-in-string "\n" "\\\\n"
