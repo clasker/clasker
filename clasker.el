@@ -363,21 +363,21 @@
 list of tickets to be shown in the current view.")
 
 (defun clasker-ticket<= (t1 t2)
-  (cond
-   ((and (not (clasker-ticket-archived-p t1)) (not (clasker-ticket-archived-p t2)))
-    (if (eq (clasker-ticket-parent t1) (clasker-ticket-parent t2))
-        (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2))
-      (let ((p1 (or (clasker-ticket-parent t1) t1))
-            (p2 (or (clasker-ticket-parent t2) t2)))
-        (clasker-ticket<= p1 p2))))
-   ((and (clasker-ticket-archived-p t1) (clasker-ticket-archived-p t2))
-    (if (and (clasker-ticket-get-property t1 'archive-timestamp)
-             (clasker-ticket-get-property t2 'archive-timestamp))
-        (time-less-p (clasker-ticket-get-property t2 'archive-timestamp)
-                     (clasker-ticket-get-property t1 'archive-timestamp))
-      (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2))))
-   (t
-    (clasker-ticket-archived-p t2))))
+  (if (eq (clasker-ticket-parent t1) (clasker-ticket-parent t2))
+      (cond
+       ((and (not (clasker-ticket-archived-p t1)) (not (clasker-ticket-archived-p t2)))
+        (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2)))
+       ((and (clasker-ticket-archived-p t1) (clasker-ticket-archived-p t2))
+        (if (and (clasker-ticket-get-property t1 'archive-timestamp)
+                 (clasker-ticket-get-property t2 'archive-timestamp))
+            (time-less-p (clasker-ticket-get-property t2 'archive-timestamp)
+                         (clasker-ticket-get-property t1 'archive-timestamp))
+          (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2))))
+       (t
+        (clasker-ticket-archived-p t2)))
+    (let ((p1 (or (clasker-ticket-parent t1) t1))
+          (p2 (or (clasker-ticket-parent t2) t2)))
+      (clasker-ticket<= p1 p2))))
 
 (defun clasker-default-view ()
   (sort (clasker-load-tickets) 'clasker-ticket<=))
