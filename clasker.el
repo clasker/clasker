@@ -261,7 +261,7 @@
     ;; Complete refer with the filename to be of the form (filename lineno).
     (when (integerp ref)
       (setq refer (list (oref ticket 'filename) refer)))
-    refer))
+    (clasker-resolve-id refer)))
 
 (defun clasker-ticket-timestamp (ticket)
   (clasker-ticket-get-property ticket 'timestamp))
