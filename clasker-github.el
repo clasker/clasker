@@ -22,11 +22,18 @@
 
 ;;; Commentary:
 
-;; Add support for github issues. It adds new github isses as tickets,
-;; and if you use magit, it prepends the number of github-issue in the
-;; commit log buffer
-;;
+;;; Add support for github issues. It adds new github isses as tickets,
+;;; and if you use magit, it prepends the number of github-issue in the
+;;; commit log buffer.
+;;;
+;;; The provided functionality is accessed through the function
+;;; `clasker-github-import-from-github'. it imports issues from a
+;;; github repo. creating new clasker tickets or updating tickets that
+;;; were already in the ticket database.
 
+;;; Magit integration is minimally supported adding the prefix [#xxx]
+;;; on commit messages where xxx is the github id of
+;;; `clasker-active-ticket'.
 
 ;;
 
@@ -66,7 +73,7 @@
 (defmethod slot-unbound ((issue gh-issues-issue) class name fn)
   "")
 
-(defun clasker-import-from-github (source)
+(defun clasker-github-import-from-github (source)
   "Import a list of issues from a user/project in github."
   (interactive "MRepository (user/project): ")
   (let* ((gh-api (gh-issues-api2))
@@ -120,6 +127,7 @@
            (clasker-github-magit-log-edit-append
             (concat "[#" (number-to-string
                           github-id) "]"))))))
+
 
  (add-hook 'magit-log-edit-mode-hook 'clasker-github-set-description-on-magit-commit))
 
