@@ -48,6 +48,14 @@
 ;;;
 ;;;    ARCHIVE-TIMESTAMP
 ;;;
+;;;    PARENT
+;;;
+;;;       Specify a hierarchy relationship with other ticket. If it is an
+;;;       integer, it refers to the ticket stored in the same file with that
+;;;       line number. It could also specify the file explicitly if the value is
+;;;       a list as ("<FILENAME>" <integer>).
+;;;
+;;;
 ;;; Two generic functions are provided to manipulate the properties of a ticket:
 ;;; `clasker-ticket-get-property' and `clasker-ticket-set-property'.
 ;;;
@@ -201,6 +209,13 @@
 
 (defun clasker-ticket-description (ticket)
   (clasker-ticket-get-property ticket 'description))
+
+(defun clasker-ticket-parent (ticket)
+  (let ((refer (clasker-ticket-get-property ticket 'parent)))
+    ;; Complete refer with the filename to be of the form (filename lineno).
+    (when (integerp ref)
+      (setq refer (list (oref ticket 'filename) refer)))
+    refer))
 
 (defun clasker-ticket-timestamp (ticket)
   (clasker-ticket-get-property ticket 'timestamp))
