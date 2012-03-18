@@ -258,10 +258,11 @@
 
 (defun clasker-ticket-parent (ticket)
   (let ((refer (clasker-ticket-get-property ticket 'parent)))
-    ;; Complete refer with the filename to be of the form (filename lineno).
-    (when (integerp refer)
-      (setq refer (list (oref ticket filename) refer)))
-    (clasker-resolve-id refer)))
+    (when refer
+      ;; Complete refer with the filename to be of the form (filename lineno).
+      (when (integerp refer)
+        (setq refer (list (oref ticket filename) refer)))
+      (clasker-resolve-id refer))))
 
 (defun clasker-ticket-timestamp (ticket)
   (clasker-ticket-get-property ticket 'timestamp))
@@ -358,20 +359,25 @@
   "The value of this variable is a function which returns the
 list of tickets to be shown in the current view.")
 
+(defun clasker-ticket<= (t1 t2)
+  (cond
+   ((and (not (clasker-ticket-archived-p t1)) (not (clasker-ticket-archived-p t2)))
+    (if (eq (clasker-ticket-parent t1) (clasker-ticket-parent t2))
+        (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2))
+      (let ((p1 (or (clasker-ticket-parent t1) t1))
+            (p2 (or (clasker-ticket-parent t2) t2)))
+        (clasker-ticket<= p1 p2))))
+   ((and (clasker-ticket-archived-p t1) (clasker-ticket-archived-p t2))
+    (if (and (clasker-ticket-get-property t1 'archive-timestamp)
+             (clasker-ticket-get-property t2 'archive-timestamp))
+        (time-less-p (clasker-ticket-get-property t2 'archive-timestamp)
+                     (clasker-ticket-get-property t1 'archive-timestamp))
+      (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2))))
+   (t
+    (clasker-ticket-archived-p t2))))
+
 (defun clasker-default-view ()
-  (sort (clasker-load-tickets)
-        (lambda (t1 t2)
-          (cond
-           ((and (not (clasker-ticket-archived-p t1)) (not (clasker-ticket-archived-p t2)))
-            (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2)))
-           ((and (clasker-ticket-archived-p t1) (clasker-ticket-archived-p t2))
-            (if (and (clasker-ticket-get-property t1 'archive-timestamp)
-                     (clasker-ticket-get-property t2 'archive-timestamp))
-                (time-less-p (clasker-ticket-get-property t2 'archive-timestamp)
-                             (clasker-ticket-get-property t1 'archive-timestamp))
-              (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2))))
-           (t
-            (clasker-ticket-archived-p t2))))))
+  (sort (clasker-load-tickets) 'clasker-ticket<=))
 
 (defun clasker-current-view ()
   (funcall clasker-view-function))
@@ -427,14 +433,25 @@ list of tickets to be shown in the current view.")
         (concat header " ...")
       header)))
 
+(defun clasker-ticket-level (ticket)
+  (let ((level 0))
+    (setq ticket (clasker-ticket-parent ticket))
+    (while ticket
+      (setq ticket (clasker-ticket-parent ticket))
+      (setq level (1+ level)))
+    level))
+
 (defun clasker-show-ticket (ticket)
   (let ((description (clasker-ticket-headline ticket))
         (timestring
          (let ((secs (clasker-ticket-ago ticket)))
            (if secs (clasker-format-seconds secs) ""))))
-    (insert (propertize (concat "  "
+    (insert (propertize (concat (make-string (* 3 (1+ (clasker-ticket-level ticket))) ?\s)
                                 description
-                                (make-string (max 0 (- (window-width) (length description) (length timestring) 3)) ?\s)
+                                (make-string (max 0 (- (window-width)
+                                                       (* 3 (1+ (clasker-ticket-level ticket)))
+                                                       (length description)
+                                                       (length timestring) 3)) ?\s)
                                 (propertize timestring 'font-lock-face 'compilation-info)
                                 "\n")
                         'clasker-ticket ticket
