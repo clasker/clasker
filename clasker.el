@@ -103,16 +103,17 @@
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
 
-(defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name)
+(defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name &optional no-recursive)
   (let ((direct-entry (assq property-name (slot-value ticket 'properties))))
     (if direct-entry
         (cdr direct-entry)
-      (let ((classes (clasker-ticket-classes ticket))
-            (prop nil))
-        (while (and classes (not prop))
-          (setq prop (get (first classes) property-name))
-          (setq classes (rest classes)))
-        prop))))
+      (unless no-recursive
+        (let ((classes (clasker-ticket-classes ticket))
+              (prop nil))
+          (while (and classes (not prop))
+            (setq prop (get (first classes) property-name))
+            (setq classes (rest classes)))
+          prop)))))
 
 (defmethod clasker-ticket-set-property ((ticket clasker-ticket) property value)
   (if (assoc property (slot-value ticket 'properties))
@@ -196,7 +197,7 @@
 ;;; Special properties
 
 (defun clasker-ticket-classes (ticket)
-  (clasker-ticket-get-property ticket 'classes))
+  (clasker-ticket-get-property ticket 'classes t))
 
 (defun clasker-ticket-description (ticket)
   (clasker-ticket-get-property ticket 'description))
