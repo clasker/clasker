@@ -95,6 +95,7 @@
   :type 'file
   :group 'clasker)
 
+(defvar clasker-ticket-counter 0)
 (defclass clasker-ticket ()
   (;; File and line where the ticket lives. They are used to save the changes to
    ;; a ticket. If both are NIL, then the ticket is volatile and will not be
@@ -107,12 +108,14 @@
     :initarg :line
     :initform nil
     :type (or integer null))
+   ;; UID is an unique identifier for the ticket for the current emacs session.
+   (uid
+    :initform (incf clasker-ticket-counter))
    ;; Association list for this ticket.
    (properties
     :initarg :properties
     :initform ()
     :type list)))
-
 
 ;;; This variable keeps a weak hash table which associates ticket identifiers as
 ;;; (FILENAME lineno) with the ticket objects itself. It is useful to reload
@@ -124,15 +127,15 @@
   (list (oref ticket filename) (oref ticket line)))
 
 (defun clasker-intern-ticket (id)
-  (when id
-    (or (gethash id clasker-ticket-table)
-        (puthash id (make-instance 'clasker-ticket) clasker-ticket-table))))
+  (or (gethash id clasker-ticket-table)
+      (puthash id (make-instance 'clasker-ticket) clasker-ticket-table)))
 
 ;;; Load an individual ticket given by the identifier ID. It could modify
 ;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
 (defun clasker-load-id (id)
-  (let ((filename (or (car id) clasker-file))
-        (lineno (cadr id)))
+  (let* ((filename (or (car id) clasker-file))
+        (lineno (cadr id))
+        (id `(,(expand-file-name filename) ,lineno)))
     (when (file-readable-p filename)
       (with-temp-buffer
         (insert-file-contents filename)
@@ -157,8 +160,12 @@
 ;;; to load the ticket from disk if it has been loaded already, so it does not
 ;;; modify ticket objects.
 (defun clasker-resolve-id (id)
-  (or (gethash id clasker-ticket-table) (clasker-load-id id)))
-
+  (let ((full-id
+         (if (integerp id)
+             `(,(expand-file-name clasker-file) ,id)
+           id)))
+    (or (gethash id clasker-ticket-table)
+        (clasker-load-id id))))
 
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
@@ -273,11 +280,7 @@
 
 (defun clasker-ticket-parent (ticket)
   (let ((refer (clasker-ticket-get-property ticket 'parent t)))
-    (when refer
-      ;; Complete refer with the filename to be of the form (filename lineno).
-      (when (integerp refer)
-        (setq refer (list (oref ticket filename) refer)))
-      (clasker-resolve-id refer))))
+    (when refer (clasker-resolve-id refer))))
 
 (defun clasker-ticket-timestamp (ticket)
   (clasker-ticket-get-property ticket 'timestamp))
@@ -374,30 +377,49 @@
   "The value of this variable is a function which returns the
 list of tickets to be shown in the current view.")
 
-(defun clasker-ticket<= (t1 t2)
-  (if (eq (clasker-ticket-parent t1) (clasker-ticket-parent t2))
-      (cond
-       ((and (not (clasker-ticket-archived-p t1)) (not (clasker-ticket-archived-p t2)))
-        (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2)))
-       ((and (clasker-ticket-archived-p t1) (clasker-ticket-archived-p t2))
-        (if (and (clasker-ticket-get-property t1 'archive-timestamp)
-                 (clasker-ticket-get-property t2 'archive-timestamp))
-            (time-less-p (clasker-ticket-get-property t2 'archive-timestamp)
-                         (clasker-ticket-get-property t1 'archive-timestamp))
-          (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2))))
-       (t
-        (clasker-ticket-archived-p t2)))
-    ;; Compare the parents at the toplevel.
+
+
+
+
+
+(defun clasker-ticket< (t1 t2)
+  (cond
+   ;; Siblings order
+   ((eq (clasker-ticket-parent t1) (clasker-ticket-parent t2))
+    (cond
+     ;; Oldest to newest
+     ((and (not (clasker-ticket-archived-p t1)) (not (clasker-ticket-archived-p t2)))
+      (let ((ts1 (clasker-ticket-get-property t2 'timestamp))
+            (ts2 (clasker-ticket-get-property t1 'timestamp)))
+        (if (equal ts1 ts2)
+            (> (oref t2 uid) (oref t1 uid))
+          (time-less-p ts2 ts1))))
+     ;; Reverse order for archived tickets
+     ((and (clasker-ticket-archived-p t1) (clasker-ticket-archived-p t2))
+      (if (and (clasker-ticket-get-property t1 'archive-timestamp)
+               (clasker-ticket-get-property t2 'archive-timestamp))
+          (let ((ts1 (clasker-ticket-get-property t1 'archive-timestamp))
+                (ts2 (clasker-ticket-get-property t2 'archive-timestamp)))
+            (if (equal ts1 ts2)
+                (> (oref t2 uid) (oref t1 uid))
+              (time-less-p ts2 ts1)))))
+     (t
+      (clasker-ticket-archived-p t2))))
+   ;; Parents before childs
+   ((eq (clasker-ticket-parent t1) t2) nil)
+   ((eq (clasker-ticket-parent t2) t1) t)
+   (t ;; Preserve tree structure
     (let ((l1 (clasker-ticket-level t1))
           (l2 (clasker-ticket-level t2)))
       (when (>= l1 l2)
         (setq t1 (clasker-ticket-parent t1)))
       (when (>= l2 l1)
         (setq t2 (clasker-ticket-parent t2)))
-      (clasker-ticket<= t1 t2))))
+      (clasker-ticket< t1 t2)))))
+
 
 (defun clasker-default-view ()
-  (sort (clasker-load-tickets) 'clasker-ticket<=))
+  (sort (clasker-load-tickets) 'clasker-ticket<))
 
 (defun clasker-current-view ()
   (funcall clasker-view-function))
