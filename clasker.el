@@ -133,7 +133,7 @@
       (with-temp-buffer
         (insert-file-contents filename)
         (goto-char (point-min))
-        (next-line (1- lineno))
+        (forward-line (1- lineno))
         (ignore-errors
           (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
                  (raw-props (read-from-whole-string line))
@@ -153,7 +153,7 @@
 ;;; to load the ticket from disk if it has been loaded already, so it does not
 ;;; modify ticket objects.
 (defun clasker-resolve-id (id)
-  (or (gethash id clasker-ticket-table) (clasker-load-id)))
+  (or (gethash id clasker-ticket-table) (clasker-load-id id)))
 
 
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
@@ -251,7 +251,7 @@
           (nreverse tickets))))))
 
 
-;;; Special properties
+;;; Ticket accessors
 
 (defun clasker-ticket-classes (ticket)
   (clasker-ticket-get-property ticket 'classes t))
@@ -260,7 +260,7 @@
   (clasker-ticket-get-property ticket 'description))
 
 (defun clasker-ticket-parent (ticket)
-  (let ((refer (clasker-ticket-get-property ticket 'parent)))
+  (let ((refer (clasker-ticket-get-property ticket 'parent t)))
     (when refer
       ;; Complete refer with the filename to be of the form (filename lineno).
       (when (integerp refer)
