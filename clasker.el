@@ -387,9 +387,14 @@ list of tickets to be shown in the current view.")
           (>= (clasker-ticket-ago t1) (clasker-ticket-ago t2))))
        (t
         (clasker-ticket-archived-p t2)))
-    (let ((p1 (or (clasker-ticket-parent t1) t1))
-          (p2 (or (clasker-ticket-parent t2) t2)))
-      (clasker-ticket<= p1 p2))))
+    ;; Compare the parents at the toplevel.
+    (let ((l1 (clasker-ticket-level t1))
+          (l2 (clasker-ticket-level t2)))
+      (when (>= l1 l2)
+        (setq t1 (clasker-ticket-parent t1)))
+      (when (>= l2 l1)
+        (setq t2 (clasker-ticket-parent t2)))
+      (clasker-ticket<= t1 t2))))
 
 (defun clasker-default-view ()
   (sort (clasker-load-tickets) 'clasker-ticket<=))
