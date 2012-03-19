@@ -1,9 +1,11 @@
 ;;; clasker-github.el --- Github backend for Clasker
 
 ;; Copyright (C) 2012  David Vázquez
+;; Copyright (C) 2012  Raimon Grau
 
 ;; Author: David Vázquez <davazp@gmail.com>
-;; Keywords: 
+;;         Raimon Grau <raimonster@gmail.com>
+;; Keywords:
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -20,13 +22,26 @@
 
 ;;; Commentary:
 
-;; 
+;;; Add support for github issues. It adds new github isses as tickets,
+;;; and if you use magit, it prepends the number of github-issue in the
+;;; commit log buffer.
+;;;
+;;; The provided functionality is accessed through the function
+;;; `clasker-github-import-from-github'. it imports issues from a
+;;; github repo. creating new clasker tickets or updating tickets that
+;;; were already in the ticket database.
+
+;;; Magit integration is minimally supported adding the prefix [#xxx]
+;;; on commit messages where xxx is the github id of
+;;; `clasker-active-ticket'.
+
+;;
 
 ;;; Code:
 
 (require 'clasker)
-(require 'json)
-
+(require 'gh-issues)
+(require 'gh-auth)
 (defun clasker-iso8601-timestring (string)
   (save-match-data
     (string-match "^\\([[:digit:]]\\{4\\}\\)-\\([[:digit:]]\\{2\\}\\)-\\([[:digit:]]\\{2\\}\\)T\\([[:digit:]]\\{2\\}\\):\\([[:digit:]]\\{2\\}\\):\\([[:digit:]]\\{2\\}\\)Z$" string)
@@ -41,29 +56,80 @@
 
 (defun clasker-github-issue-to-ticket (issue)
   (let ((ticket (make-instance 'clasker-ticket)))
-    (clasker-ticket-set-property ticket 'description
-                                 (replace-regexp-in-string "" "" (cdr (assq 'title issue))))
+    (clasker-ticket-set-property
+     ticket
+     'description
+     (concat (oref issue title) "\n"
+             (replace-regexp-in-string "" ""
+                                       (or
+                                        (oref issue body)
+                                        ""))))
     (clasker-ticket-set-property ticket 'timestamp
-                                 (and (assq 'created_at issue)
-                                      (clasker-iso8601-timestring (cdr (assq 'created_at issue)))))
+                                 (and (oref issue created_at)
+                                      (clasker-iso8601-timestring  (oref issue created_at))))
+    (clasker-ticket-set-property ticket 'github-id (oref issue number))
     ticket))
 
-(defun clasker-import-from-github (source)
+(defmethod slot-unbound ((issue gh-issues-issue) class name fn)
+  "")
+
+(defun clasker-github-import-from-github (source)
   "Import a list of issues from a user/project in github."
   (interactive "MRepository (user/project): ")
-  (let* ((user/project (split-string source "/"))
-         (url (concat "https://api.github.com/repos/"
-                      (first user/project) "/" (second user/project)
-                      "/issues?per_page=100"))
-         (buffer (url-retrieve-synchronously url)))
-    (with-current-buffer buffer
-      (search-forward "\n\n")
-      (let* ((json-array-type 'list)
-             (project-issues (json-read))
-             (tickets (mapcar 'clasker-github-issue-to-ticket project-issues)))
-        (mapc 'clasker-save-ticket tickets)))
-    (clasker-revert)))
+  (let* ((gh-api (gh-issues-api2))
+         (user/project (split-string source "/"))
+         (response (apply #'gh-issues-issue-list gh-api user/project)))
+    (gh-api-add-response-callback  response 'clasker-github-save-ticket)))
 
+(defun clasker--github-tickets ()
+  (let ((table (make-hash-table))
+        (tickets (clasker-load-tickets)))
+    (dolist (ticket tickets)
+      (puthash (clasker-ticket-get-property ticket 'github-id) ticket table))
+    table))
+
+(defun clasker-github-save-ticket (issues)
+  (interactive)
+  (let ((gh-tickets (clasker--github-tickets)))
+    (dolist (issue issues)
+      (let* ((gh-issue (clasker-github-issue-to-ticket issue))
+             (clasker-ticket (gethash (clasker-ticket-get-property gh-issue 'github-id) gh-tickets)))
+        (clasker-save-ticket
+         (if clasker-ticket
+             (clasker-github-update-ticket clasker-ticket gh-issue)
+           gh-issue)))))
+  (clasker-revert))
+
+;;; TODO: NIY
+(defmethod clasker-github-save-ticket-to-github ((ticket )))
+
+(defun gh-issues-api2 (&optional sync auth)
+  (gh-issues-api "api" :sync sync :cache nil :auth (make-instance 'gh-oauth-authenticator) :num-retries 1))
+
+(defun clasker-github-update-ticket (ticket other)
+  (clasker-ticket-set-property ticket 'description
+                               (clasker-ticket-get-property other 'description))
+  ticket)
+
+;;; Magit support
+
+(when (featurep 'magit)
+ (defun clasker-github-magit-log-edit-append (str)
+   (with-current-buffer (get-buffer-create magit-log-edit-buffer-name)
+     (goto-char (point-min))
+     (insert str)))
+
+ (defun clasker-github-set-description-on-magit-commit ()
+   (when clasker-active-ticket
+     (let ((github-id (clasker-ticket-get-property-in-hierarchy
+                       clasker-active-ticket 'github-id) ))
+       (if github-id
+           (clasker-github-magit-log-edit-append
+            (concat "[#" (number-to-string
+                          github-id) "]"))))))
+
+
+ (add-hook 'magit-log-edit-mode-hook 'clasker-github-set-description-on-magit-commit))
 
 (provide 'clasker-github)
 ;;; clasker-github.el ends here
