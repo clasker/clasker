@@ -78,6 +78,10 @@
 (eval-when-compile
   (require 'cl))
 
+(eval-when-compile
+  (unless (<= 24 emacs-major-version)
+    (error "You need at least Emacs 24 to use Clasker.")))
+
 (require 'eieio)
 (require 'clasker-edit)
 
@@ -658,6 +662,7 @@ list of tickets to be shown in the current view.")
 (provide 'clasker)
 
 ;;; Local variables:
+;;; lexical-binding: t
 ;;; indent-tabs-mode: nil
 ;;; fill-column: 80
 ;;; End:
