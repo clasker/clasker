@@ -168,8 +168,8 @@
          (if (integerp id)
              `(,(expand-file-name clasker-file) ,id)
            id)))
-    (or (gethash id clasker-ticket-table)
-        (clasker-load-id id))))
+    (or (gethash full-id clasker-ticket-table)
+        (clasker-load-id full-id))))
 
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
@@ -253,8 +253,7 @@
       (with-temp-buffer
         (insert-file-contents filename)
         (goto-char (point-min))
-        (let ((finishp nil)
-              (tickets nil))
+        (let ((tickets nil))
           (while (< (point) (point-max))
             (ignore-errors
               (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
@@ -352,8 +351,7 @@
 (defmacro clasker-with-new-window (buffer-name height &rest body)
   (declare (indent 1))
   (let ((window (make-symbol "window"))
-        (buffer (make-symbol "buffer"))
-        (returnval (make-symbol "returnval")))
+        (buffer (make-symbol "buffer")))
     `(save-excursion
        (let ((,window (split-window-vertically (- (window-height) ,height)))
              (,buffer (generate-new-buffer ,buffer-name)))
@@ -507,7 +505,7 @@ list of tickets to be shown in the current view.")
   (dolist (ticket list)
     (clasker-show-ticket ticket)))
 
-(defun clasker-revert (&optional ignore-auto noconfirm)
+(defun clasker-revert (&optional _ignore-auto _noconfirm)
   (widen)
   (let ((position (point))
         (inhibit-read-only t))
@@ -566,8 +564,7 @@ list of tickets to be shown in the current view.")
 
 (defun clasker-mark-ticket-pos ()
   (interactive)
-  (let ((begin  (clasker-beginning-of-ticket))
-        (end (clasker-end-of-ticket)))
+  (let ((end (clasker-end-of-ticket)))
     (push-mark (clasker-beginning-of-ticket) t nil)
     (goto-char end)))
 
@@ -602,7 +599,7 @@ list of tickets to be shown in the current view.")
 (defun clasker-unmark-ticket (arg)
   ;; TODO: Fix to work with negative arguments.
   (interactive "p")
-  (dotimes (i arg)
+  (dotimes (_i arg)
     (when (get-text-property (point) 'clasker-ticket)
       (beginning-of-line)
       (let ((inhibit-read-only t))
