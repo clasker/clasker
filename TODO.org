@@ -1,7 +1,7 @@
 #+title: Clasker ticket management
 #+SEQ_TODO: TODO STARTED | DONE
 #+SEQ_TODO: BUG | FIXED
-#+TAGS: DAVAZP(d) RGRAU(r)
+#+TAGS: ARCHIVE(a) DAVAZP(d) RGRAU(r)
 #+STARTUP: overview odd hidestars
 
 * Brainstorming and discussions
