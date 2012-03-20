@@ -76,7 +76,8 @@
                                     clasker-pomodoro-working-item))  ; HACK
     (setf counter (1+ (or (clasker-ticket-get-property clasker-active-ticket 'clasker-pomodoro-count)
                           0)))
-    (clasker-ticket-set-property clasker-active-ticket 'clasker-pomodoro-count counter)))
+    (clasker-ticket-set-property clasker-active-ticket 'clasker-pomodoro-count counter)
+    (clasker-save-ticket clasker-active-ticket)))
 
 (provide 'clasker-pomodoro)
 ;;; clasker-pomodoro.el ends here
