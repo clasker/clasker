@@ -32,3 +32,16 @@
 
 
 * Tasks
+
+*** TODO Refine code to be more standard
+    - [ ] remove (interactive) where uneeded
+    - [ ] make next-ticket/previous-ticket accept ARG prefix
+    - [ ] make next-ticket/previous-ticket more robust
+
+*** TODO filters (narrowing)
+
+*** TODO show ticket done by backend plugins
+
+*** TODO make tickets disapear after a while after closed
+
+*** TODO Modify state of issues from clasker to gh. assignee, labels, close
