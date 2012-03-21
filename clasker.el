@@ -1,4 +1,4 @@
-;;; clasker.el --- An experimental tracker for Emacs
+f;;; clasker.el --- An experimental tracker for Emacs
 
 ;; Copyright (C) 2012  Raimon Grau
 ;; Copyright (C) 2012  David Vázquez
@@ -568,22 +568,27 @@ list of tickets to be shown in the current view.")
     (push-mark (clasker-beginning-of-ticket) t nil)
     (goto-char end)))
 
-(defun clasker-next-ticket ()
-  (interactive)
-  (let ((position (next-single-property-change (point) 'clasker-ticket)))
-    (when position
-      (unless (get-text-property position 'clasker-ticket)
-        (setq position (next-single-property-change position 'clasker-ticket)))
-      (and position (goto-char position)))))
+(defun clasker-next-ticket (&optional arg)
+    (interactive "p")
+  (setq arg (or arg 1))
+  (dotimes (i arg) (clasker--following-single-ticket
+                    'next-single-property-change)))
 
-(defun clasker-previous-ticket ()
-  (interactive)
-  (let ((position (previous-single-property-change (point) 'clasker-ticket)))
-    (when position
-      (unless (get-text-property position 'clasker-ticket)
-        (setq position (previous-single-property-change position 'clasker-ticket)))
-      (and position (goto-char position)))))
+(defun clasker-previous-ticket (&optional arg)
+    (interactive "p")
+  (setq arg (or arg 1))
+  (dotimes (i arg) (clasker--following-single-ticket
+                    'previous-single-property-change)))
 
+(defun clasker--following-single-ticket (movement-func)
+  (let ((ticket (get-text-property (point) 'clasker-ticket))
+        (point (point)))
+    (setq next-ticket-pos (funcall movement-func  point 'clasker-ticket))
+    (while (and next-ticket-pos
+                (or (not (get-text-property next-ticket-pos 'clasker-ticket))
+                    (equal next-ticket-pos ticket)))
+      (setq next-ticket-pos (funcall movement-func point 'clasker-ticket)))
+    (goto-char (if next-ticket-pos next-ticket-pos point))))
 
 (defun clasker-mark-ticket (arg)
   ;; TODO: Fix to work with negative arguments.
