@@ -21,6 +21,8 @@
 ;;; Commentary:
 
 ;;
+;; (add-hook 'clasker-activate-ticket-hook 'foo)
+;; (add-hook 'clasker-deactivate-ticket-hook 'foo)
 
 ;;; Code:
 
@@ -28,8 +30,6 @@
 (defvar clasker-activate-ticket-hook nil "hook on activating a task")
 (defvar clasker-deactivate-ticket-hook nil "hook on deactivating a task")
 
-;; (add-hook 'clasker-activate-ticket-hook 'foo)
-;; (add-hook 'clasker-deactivate-ticket-hook 'foo)
 
 (defmethod clasker-active-p ((ticket clasker-ticket))
   (equal (slot-value clasker-active-ticket 'line) (slot-value ticket 'line)))
