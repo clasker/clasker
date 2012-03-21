@@ -36,21 +36,26 @@
 
 ;;; Code:
 
-(defvar clasker-pomodoro-items '(("Work" . 25) ("Play" . 5) ("Long play" . 15)))
-(defvar clasker-pomodoro-working-item (caar clasker-pomodoro-items))
+(defvar clasker-pomodoro-items '(("Work" . 25) ("Play" . 5) ("Long play" . 15))
+  "List of definitions of different types of time-slots (name . minutes) ")
+
+(defvar clasker-pomodoro-working-item (caar clasker-pomodoro-items)
+  "after which time slot you consider a pomodoro finished")
+
 (defvar clasker-pomodoro-pattern   (let ((a (mapcar (lambda (x) (assoc x clasker-pomodoro-items))
                                                     '("Work" "Play" "Work" "Play" "Work" "Play" "Work" "Long play"))))
-                                     (nconc a a)))
+                                     (nconc a a))
+  "Ring with the complete pattern of the workflow")
 
 (defvar clasker-pomodoro-timer nil)
-(defvar clasker-pomodoro-current-state 0)
+(defvar clasker-pomodoro-current-state 0 "Minutes on current time slot")
 
 (defun clasker-pomodoro-start ()
   (interactive)
+  (clasker-pomodoro-start-pomodoro)
   (setq clasker-pomodoro-timer (run-at-time nil 60 'clasker-pomodoro-update)))
 
 (defun clasker-pomodoro-update ()
-  (interactive)
   (incf clasker-pomodoro-current-state)
   (when (>=  clasker-pomodoro-current-state (cdar clasker-pomodoro-pattern))
     (clasker-pomodoro-end-pomodoro)
@@ -59,12 +64,10 @@
   (clasker-pomodoro-update-modeline))
 
 (defun clasker-pomodoro-update-modeline ()
-  (interactive)
   (setq global-mode-string (format "[%s:%d]" (caar clasker-pomodoro-pattern)
                                    clasker-pomodoro-current-state)))
 
 (defun clasker-pomodoro-start-pomodoro ()
-  (interactive)
   (run-hooks 'clasker-pomodoro-start-pomodoro-hook)
   (setq clasker-pomodoro-current-state 0))
 
