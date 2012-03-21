@@ -1,4 +1,4 @@
-f;;; clasker.el --- An experimental tracker for Emacs
+;;; clasker.el --- An experimental tracker for Emacs
 
 ;; Copyright (C) 2012  Raimon Grau
 ;; Copyright (C) 2012  David Vázquez
