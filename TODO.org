@@ -30,15 +30,50 @@
     where discuss about the tickets. It also suggests a
     notifications/subscriptions system.
 
+*** clasker-ticket-get-property improvements
+00:13 <davazp> clasker-ticket-get-property TICKET &optional RECURSIVE
+      NO-CLASSES
+00:13 <davazp> recursive es, un entero, indicando el numero de ascendentes que
+      se mira
+00:13 <davazp> NIL, es igual que 0, no ascendentes, el valor por defecto
+00:13 <davazp> T = infinitos, hasta el toplevel
+00:14 <davazp> si NO-CLASSES es T, entonces no se mira en CLASSES
+00:14 <davazp> y el flujo de herencia es
+00:14 <davazp> se mira el ticket, si no encuentras, miras en su CLASSES
+00:14 <davazp> y eso determina las propiedades directas del ticket
+00:14 <davazp> si no encuentras propiedad directa, pasas al padre
+00:14 <davazp> y asi
+00:14 <rgc`> yup
+00:14 <davazp> :-D
+00:15 <rgc`> anoto esto ultimo en el TODO
+00:15 <davazp> o bien,
+00:15 <davazp> podemos usar las propiedades de los simbolos
+00:15 <davazp> para indicar esa informacin
+00:15 <davazp> por ejemplo
+00:15 <davazp> PARENT-ID, es una propiedad que nunca
+00:15 <davazp> deberia mirarse en CLASSES
+00:15 <davazp> verdad?
+00:15 <davazp> pues poner
+00:15 <davazp> (put 'parent-id 'scope 'private)
+00:16 <davazp> y que clasker-ticket-get-property mire la informacion sobre las
+      propiedades para decidir como buscarla
+00:16 <davazp> automaticamente
+00:16 <rgc`> para saber si un tipo de ticket debe mirar parriba o no
+00:16 <rgc`> bueno, puede ser util
+
+***
 
 * Tasks
 
-*** TODO Refine code to be more standard
+*** DONE Refine code to be more standard
+    CLOSED: [2012-03-21 Wed 22:26]
     - [X] remove (interactive) where uneeded
     - [X] make next-ticket/previous-ticket accept ARG prefix
     - [X] make next-ticket/previous-ticket more robust
 
 *** TODO filters (narrowing)
+
+***** TODO set filter,
 
 *** TODO show ticket done by backend plugins
 
