@@ -74,6 +74,12 @@
 ;;; local variable `clasker-view-function' is supposed to keep a function which
 ;;; will return the list of tickets to show.
 ;;;
+;;; TODO: Remove after testing filters
+;;; (defun clasker-filter-gh ()
+;;;  (sort (remove-if-not (lambda (x) (clasker-ticket-get-property x 'github-id))
+;;;                       (clasker-load-tickets))
+;;;        'clasker-ticket<))
+
 
 (eval-when-compile
   (require 'cl))
