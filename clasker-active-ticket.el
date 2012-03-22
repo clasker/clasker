@@ -61,8 +61,8 @@
         (beginning-of-buffer)
         (search-forward "\n\n")
         (while (and
-                (not (clasker-active-p (get-text-property (point) 'clasker-ticket)))
-                (not (eq (point) (point-max))))
+                (not (eq (point) (point-max)))
+                (not (clasker-active-p (get-text-property (point) 'clasker-ticket))))
           (clasker-next-ticket))
         (put-text-property (point) (clasker-end-of-ticket) 'font-lock-face 'bold)))))
 
