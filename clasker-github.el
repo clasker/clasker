@@ -31,6 +31,10 @@
 ;;; github repo. creating new clasker tickets or updating tickets that
 ;;; were already in the ticket database.
 
+;;; Tickets fetched from github answer t to the method
+;;; `clasker-ticket-github-p'.
+;;;
+
 ;;; Magit integration is minimally supported adding the prefix [#xxx]
 ;;; on commit messages where xxx is the github id of
 ;;; `clasker-active-ticket'.
@@ -39,7 +43,7 @@
 
 ;;; Code:
 
-(require 'clasker)
+;(require 'clasker)
 (require 'gh-issues)
 (require 'gh-auth)
 (defun clasker-iso8601-timestring (string)
@@ -69,6 +73,9 @@
                                       (clasker-iso8601-timestring  (oref issue created_at))))
     (clasker-ticket-set-property ticket 'github-id (oref issue number))
     ticket))
+
+(defmethod clasker-github-ticket-p ((ticket clasker-ticket))
+  (clasker-ticket-get-property ticket 'github-id))
 
 (defmethod slot-unbound ((issue gh-issues-issue) class name fn)
   "")

@@ -661,6 +661,7 @@ list of tickets to be shown in the current view.")
   (clasker-revert))
 
 (require 'clasker-active-ticket)
+(require 'clasker-github)
 (provide 'clasker)
 
 ;;; Local variables:
