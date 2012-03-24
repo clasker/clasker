@@ -7,7 +7,13 @@
 
 (defvar clasker-default-filters ())
 
-(setq clasker-default-filters (list #'clasker-filter-github (clasker-filter-recent)))
+;;; (setq clasker-default-filters (list #'clasker-filter-github (clasker-filter-recent)))
+
+(defun clasker-filter-add-filter (callable-filter &optional filter-list )
+  (interactive)
+  (let ((l (or filter-list clasker-active-filters)))
+    (nconc l callable-filter)
+    (clasker-revert)))
 
 (defun clasker-ticket-filtered (ticket &optional filters)
   (let ((ti ticket))

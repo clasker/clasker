@@ -385,11 +385,6 @@
   "The value of this variable is a function which returns the
 list of tickets to be shown in the current view.")
 
-
-
-
-
-
 (defun clasker-ticket< (t1 t2)
   (cond
    ;; Siblings order
@@ -425,9 +420,9 @@ list of tickets to be shown in the current view.")
         (setq t2 (clasker-ticket-parent t2)))
       (clasker-ticket< t1 t2)))))
 
-
 (defun clasker-default-view ()
-  (sort (clasker-load-tickets) 'clasker-ticket<))
+  (sort (clasker-filter-tickets (clasker-load-tickets))
+        'clasker-ticket<))
 
 (defun clasker-current-view ()
   (funcall clasker-view-function))
@@ -632,6 +627,40 @@ list of tickets to be shown in the current view.")
   (interactive "fOpen Clasker file: ")
   (setf clasker-file arg)
   (clasker-revert))
+
+;;; filtering
+
+(defvar clasker-default-filters nil "list of default filters to apply")
+(defvar clasker-active-filters clasker-default-filters "list of current active filters to apply")
+
+(defun clasker-filter-add-filter (callable-filter &optional filter-list)
+  (interactive "afilter:")
+  (let ((l (or filter-list 'clasker-active-filters)))
+    (add-to-list l callable-filter)
+    (clasker-revert)))
+
+(defun clasker-filter-add-filter-lisp (callable-filter &optional filter-list)
+  (interactive "Xlisp code to add:")
+  (let ((l (or filter-list 'clasker-active-filters)))
+    (add-to-list l callable-filter)
+    (clasker-revert)))
+
+(defun clasker-ticket-filtered (ticket filters)
+  (catch 'break
+    (dolist (f filters nil)
+      (unless (funcall f ticket)
+        (throw 'break  t)))))
+
+(defun clasker-filter-tickets (ticket-list)
+  (let ((tickets))
+    (dolist (ticket ticket-list)
+      (unless (clasker-ticket-filtered ticket clasker-active-filters)
+        (push ticket tickets)))
+    (nreverse tickets)))
+
+;; (defun clasker-filter-recent ()
+;;   (let ((timestamp (string-to-int (read-string "number:"))))
+;;     (lambda (ticket) (<= timestamp (car (clasker-ticket-get-property ticket 'timestamp))))))
 
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
