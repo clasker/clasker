@@ -237,7 +237,6 @@
          (forward-char))))
     (buffer-string)))
 
-
 (defmethod clasker-save-ticket ((ticket clasker-ticket))
   (let ((line (oref ticket line)))
     (with-temp-file clasker-file
@@ -666,9 +665,19 @@ list of tickets to be shown in the current view.")
         (push ticket tickets)))
     (nreverse tickets)))
 
-;; (defun clasker-filter-recent ()
-;;   (let ((timestamp (string-to-int (read-string "number:"))))
-;;     (lambda (ticket) (<= timestamp (car (clasker-ticket-get-property ticket 'timestamp))))))
+(defun clasker-filter-only ()
+  (interactive)
+  (let ((ticket (clasker-ticket-at-point)))
+    (clasker-filter-add-filter (lambda (x) (clasker-ticket-ancestor-p ticket x)))))
+
+(defun clasker-remove-filters ()
+  (interactive)
+  (setq clasker-active-filters clasker-default-filters)
+  (clasker-revert))
+
+(defun clasker-ticket-at-point ()
+  (interactive)
+  (get-text-property (point) 'clasker-ticket))
 
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
@@ -681,6 +690,8 @@ list of tickets to be shown in the current view.")
     (define-key map (kbd "u") 'clasker-unmark-ticket)
     (define-key map (kbd "p") 'clasker-previous-ticket)
     (define-key map (kbd "C-c C-f") 'clasker-open-file)
+    (define-key map (kbd "o") 'clasker-filter-only)
+    (define-key map (kbd "^") 'clasker-remove-filters)
     (define-key map (kbd "RET") 'clasker-do)
     map)
   "docstring")
