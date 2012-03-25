@@ -210,6 +210,14 @@
             (clasker-ticket-parent ticket)
             property)))))
 
+(defun clasker-ticket-ancestor-p (ancestor child)
+  (let ((ancestor-id (oref ancestor line)))
+    (or
+     (equal ancestor-id (oref child line))
+     (if (clasker-ticket-parent child)
+         (clasker-ticket-ancestor-p ancestor (clasker-ticket-parent child))
+       nil))))
+
 (defun clasker--quote-string (string)
   (replace-regexp-in-string "\n" "\\\\n"
    (replace-regexp-in-string "\\\\" "\\\\\\\\" string)))
