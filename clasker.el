@@ -451,7 +451,7 @@ list of tickets to be shown in the current view.")
 (defun clasker-format-seconds (seconds)
   "Format a number of seconds in a readable way."
   (unless (plusp seconds)
-    (error "%d is not a possitive number." seconds))
+    (error "%d is not a positive number." seconds))
   (let (years days hours minutes)
     (macrolet ((comp (var n)
                      `(progn
