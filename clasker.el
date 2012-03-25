@@ -448,11 +448,11 @@ list of tickets to be shown in the current view.")
           (goto-char beginning)
           (block nil
             (while (< (point) end)
-              (push (get-text-property (point) 'clasker-ticket) tickets)
+              (push (clasker-ticket-at-point) tickets)
               (or (clasker-next-ticket) (return))))))
       tickets))
    (t
-    (list (get-text-property (point) 'clasker-ticket)))))
+    (list (clasker-ticket-at-point)))))
 
 
 (defun clasker-format-seconds (seconds)
@@ -589,7 +589,7 @@ list of tickets to be shown in the current view.")
                     'previous-single-property-change)))
 
 (defun clasker--following-single-ticket (movement-func)
-  (let ((ticket (get-text-property (point) 'clasker-ticket))
+  (let ((ticket (clasker-ticket-at-point))
         (point (point)))
     (setq next-ticket-pos (funcall movement-func  point 'clasker-ticket))
     (while (and next-ticket-pos
@@ -601,7 +601,7 @@ list of tickets to be shown in the current view.")
 (defun clasker-mark-ticket (arg)
   ;; TODO: Fix to work with negative arguments.
   (interactive "p")
-  (when (get-text-property (point) 'clasker-ticket)
+  (when (clasker-ticket-at-point)
     (beginning-of-line)
     (let ((inhibit-read-only t))
       (delete-char 1)
@@ -613,7 +613,7 @@ list of tickets to be shown in the current view.")
   ;; TODO: Fix to work with negative arguments.
   (interactive "p")
   (dotimes (_i arg)
-    (when (get-text-property (point) 'clasker-ticket)
+    (when (clasker-ticket-at-point)
       (beginning-of-line)
       (let ((inhibit-read-only t))
         (delete-char 1)
@@ -676,7 +676,6 @@ list of tickets to be shown in the current view.")
   (clasker-revert))
 
 (defun clasker-ticket-at-point ()
-  (interactive)
   (get-text-property (point) 'clasker-ticket))
 
 (defvar clasker-mode-map
