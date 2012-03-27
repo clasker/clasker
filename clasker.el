@@ -434,6 +434,47 @@ list of tickets to be shown in the current view.")
 (defun clasker-current-view ()
   (funcall clasker-view-function))
 
+
+;;; Filtering
+
+(defvar clasker-default-filters nil "list of default filters to apply")
+(defvar clasker-active-filters clasker-default-filters "list of current active filters to apply")
+
+(defun clasker-filter-add-filter (callable-filter &optional filter-list)
+  (interactive "afilter:")
+  (let ((l (or filter-list 'clasker-active-filters)))
+    (add-to-list l callable-filter)
+    (clasker-revert)))
+
+(defun clasker-filter-add-filter-lisp (callable-filter &optional filter-list)
+  (interactive "Xlisp code to add:")
+  (let ((l (or filter-list 'clasker-active-filters)))
+    (add-to-list l callable-filter)
+    (clasker-revert)))
+
+(defun clasker-ticket-filtered (ticket filters)
+  (catch 'break
+    (dolist (f filters nil)
+      (unless (funcall f ticket)
+        (throw 'break  t)))))
+
+(defun clasker-filter-tickets (ticket-list)
+  (let ((tickets))
+    (dolist (ticket ticket-list)
+      (unless (clasker-ticket-filtered ticket clasker-active-filters)
+        (push ticket tickets)))
+    (nreverse tickets)))
+
+(defun clasker-filter-only ()
+  (interactive)
+  (let ((ticket (clasker-ticket-at-point)))
+    (clasker-filter-add-filter (lambda (x) (clasker-ticket-ancestor-p ticket x)))))
+
+(defun clasker-remove-filters ()
+  (interactive)
+  (setq clasker-active-filters clasker-default-filters)
+  (clasker-revert))
+
 
 ;;;; User commands and interface
 
@@ -633,46 +674,6 @@ list of tickets to be shown in the current view.")
 (defun clasker-open-file (arg)
   (interactive "fOpen Clasker file: ")
   (setf clasker-file arg)
-  (clasker-revert))
-
-;;; filtering
-
-(defvar clasker-default-filters nil "list of default filters to apply")
-(defvar clasker-active-filters clasker-default-filters "list of current active filters to apply")
-
-(defun clasker-filter-add-filter (callable-filter &optional filter-list)
-  (interactive "afilter:")
-  (let ((l (or filter-list 'clasker-active-filters)))
-    (add-to-list l callable-filter)
-    (clasker-revert)))
-
-(defun clasker-filter-add-filter-lisp (callable-filter &optional filter-list)
-  (interactive "Xlisp code to add:")
-  (let ((l (or filter-list 'clasker-active-filters)))
-    (add-to-list l callable-filter)
-    (clasker-revert)))
-
-(defun clasker-ticket-filtered (ticket filters)
-  (catch 'break
-    (dolist (f filters nil)
-      (unless (funcall f ticket)
-        (throw 'break  t)))))
-
-(defun clasker-filter-tickets (ticket-list)
-  (let ((tickets))
-    (dolist (ticket ticket-list)
-      (unless (clasker-ticket-filtered ticket clasker-active-filters)
-        (push ticket tickets)))
-    (nreverse tickets)))
-
-(defun clasker-filter-only ()
-  (interactive)
-  (let ((ticket (clasker-ticket-at-point)))
-    (clasker-filter-add-filter (lambda (x) (clasker-ticket-ancestor-p ticket x)))))
-
-(defun clasker-remove-filters ()
-  (interactive)
-  (setq clasker-active-filters clasker-default-filters)
   (clasker-revert))
 
 (defun clasker-ticket-at-point ()
