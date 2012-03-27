@@ -650,7 +650,7 @@ list of tickets to be shown in the current view.")
     (while (and next-ticket-pos
                 (or (not (get-text-property next-ticket-pos 'clasker-ticket))
                     (equal next-ticket-pos ticket)))
-      (setq next-ticket-pos (funcall movement-func point 'clasker-ticket)))
+      (setq next-ticket-pos (funcall movement-func next-ticket-pos 'clasker-ticket)))
     (goto-char (if next-ticket-pos next-ticket-pos point))))
 
 (defun clasker-mark-ticket (arg)
