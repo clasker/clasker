@@ -63,6 +63,22 @@
 
 ***
 
+*** views should have some state
+19:20 <rgrau> lo jodido es que estos filtros, van muy bien, pero no cambian el estado global de
+      nada, simplemente hace que no se muestren los otros. esto esta bien, y era la idea, pero crea
+      'problemas' cuando
+19:20 <rgrau> en esta vista filtrada, creas un ticket nuevo, y si no lo creas especificamente, como
+      descendiente de alguno que veas, se crea como top level, sin parent-id
+19:20 <rgrau> y esto significa que no lo ves
+19:20 <rbistolfi> claro
+19:20 <rgrau> y seguramente, no es lo que quieres :)
+19:21 <rgrau> o si importas de github, no tendran parent-id tampoco
+19:21 <rgrau> tiene que haber un tipo de herencia de un objeto view o algo asi
+19:21 <rbistolfi> habra que usarlo un tiempo aver si sale del workflow una solucion apropiada
+19:21 <rgrau> y los tickets pillen defaults de ahi
+19:21 <rbistolfi> claro
+19:22 <rgrau> y que los filtros modifiquen la view esa
+
 * Tasks
 
 *** DONE Refine code to be more standard
