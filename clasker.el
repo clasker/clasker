@@ -437,8 +437,10 @@ list of tickets to be shown in the current view.")
 
 ;;; Filtering
 
-(defvar clasker-default-filters nil "list of default filters to apply")
-(defvar clasker-active-filters clasker-default-filters "list of current active filters to apply")
+(defvar clasker-default-filters nil
+  "list of default filters to apply")
+(defvar clasker-active-filters clasker-default-filters
+  "list of current active filters to apply")
 
 (defun clasker-filter-add-filter (callable-filter &optional filter-list)
   (interactive "afilter:")
@@ -714,8 +716,6 @@ list of tickets to be shown in the current view.")
   (clasker-mode)
   (clasker-revert))
 
-(require 'clasker-active-ticket)
-(require 'clasker-github)
 (provide 'clasker)
 
 ;;; Local variables:
