@@ -32,7 +32,7 @@
 ;;; were already in the ticket database.
 
 ;;; Tickets fetched from github answer t to the method
-;;; `clasker-ticket-github-p'.
+;;; `clasker-github-ticket-p'.
 ;;;
 
 ;;; Magit integration is minimally supported adding the prefix [#xxx]
@@ -46,6 +46,13 @@
 ;(require 'clasker)
 (require 'gh-issues)
 (require 'gh-auth)
+
+(defclass clasker-github-ticket (clasker-ticket) () "foo")
+(add-to-list 'clasker-allowed-ticket-classes 'clasker-github-ticket)
+
+;; (defmethod initialize-instance ((ticket clasker-github-ticket))
+;;   (call-next-method))
+
 (defun clasker-iso8601-timestring (string)
   (save-match-data
     (string-match "^\\([[:digit:]]\\{4\\}\\)-\\([[:digit:]]\\{2\\}\\)-\\([[:digit:]]\\{2\\}\\)T\\([[:digit:]]\\{2\\}\\):\\([[:digit:]]\\{2\\}\\):\\([[:digit:]]\\{2\\}\\)Z$" string)
@@ -58,8 +65,13 @@
      (string-to-number (match-string 1 string))
      t)))
 
+(defmethod clasker-ticket-headline ((ticket clasker-github-ticket))
+  (concat (format "[#%s]:" (clasker-ticket-get-property ticket 'github-id))
+          (call-next-method)))
+
 (defun clasker-github-issue-to-ticket (issue)
-  (let ((ticket (make-instance 'clasker-ticket)))
+  (let ((ticket (make-instance 'clasker-github-ticket)))
+    (clasker-ticket-set-property ticket 'class 'clasker-github-ticket)
     (clasker-ticket-set-property
      ticket
      'description
@@ -73,9 +85,6 @@
                                       (clasker-iso8601-timestring  (oref issue created_at))))
     (clasker-ticket-set-property ticket 'github-id (oref issue number))
     ticket))
-
-(defmethod clasker-github-ticket-p ((ticket clasker-ticket))
-  (clasker-ticket-get-property ticket 'github-id))
 
 (defmethod slot-unbound ((issue gh-issues-issue) class name fn)
   "")
