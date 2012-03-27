@@ -455,11 +455,10 @@ list of tickets to be shown in the current view.")
     (clasker-revert)))
 
 (defun clasker-ticket-filtered (ticket filters)
-  (let ((break (gensym)))
-    (catch break
-      (dolist (f filters nil)
-        (unless (funcall f ticket)
-          (throw break t))))))
+  (block nil
+    (dolist (f filters nil)
+      (unless (funcall f ticket)
+        (return t)))))
 
 (defun clasker-filter-tickets (ticket-list)
   (let* ((list (list 'list-of-tickets))
