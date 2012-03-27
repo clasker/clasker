@@ -171,7 +171,7 @@
             (oset ticket properties props)
             (oset ticket filename filename)
             (oset ticket line (line-number-at-pos))
-            (clasker-ticket-set-property ticket 'class class)
+;            (clasker-ticket-set-property ticket 'class class)
             ticket))))))
 
 ;;; Resolve a ticket identifier. It is like `clasker-load-id', but it tries not
@@ -187,6 +187,12 @@
 
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
+
+(defmethod initialize-instance :after ((ticket clasker-ticket) slots)
+  (message (format "%s" (class-of ticket)))
+  (clasker-ticket-set-class ticket (class-of ticket))
+;  (when (next-method-p) (call-next-method))
+  )
 
 (defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name &optional no-recursive)
   (let ((direct-entry (assq property-name (slot-value ticket 'properties))))
@@ -204,6 +210,9 @@
   (if (assoc property (slot-value ticket 'properties))
       (setcdr (assoc property (slot-value ticket 'properties)) value)
     (clasker-ticket--add-property ticket property value)))
+
+(defmethod clasker-ticket-set-class ((ticket clasker-ticket)  value)
+  (clasker-ticket-set-property ticket 'class value))
 
 (defmethod clasker-ticket-delete-property ((ticket clasker-ticket) property)
   (let ((property-list (slot-value ticket 'properties)))
@@ -549,7 +558,7 @@ list of tickets to be shown in the current view.")
           (setf ticket (make-instance 'clasker-ticket))
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
-          (clasker-ticket-set-property ticket 'class 'clasker-ticket)
+;          (clasker-ticket-set-property ticket 'class 'clasker-ticket)
           (clasker-save-ticket ticket)
           (clasker-revert))))))
 
@@ -568,7 +577,7 @@ list of tickets to be shown in the current view.")
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
           (clasker-ticket-set-property ticket 'parent parent-id)
-          (clasker-ticket-set-property ticket 'class 'clasker-ticket)
+;          (clasker-ticket-set-property ticket 'class 'clasker-ticket)
           (clasker-save-ticket ticket)
           (clasker-revert))))))
 

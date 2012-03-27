@@ -71,7 +71,7 @@
 
 (defun clasker-github-issue-to-ticket (issue)
   (let ((ticket (make-instance 'clasker-github-ticket)))
-    (clasker-ticket-set-property ticket 'class 'clasker-github-ticket)
+;    (clasker-ticket-set-property ticket 'class 'clasker-github-ticket)
     (clasker-ticket-set-property
      ticket
      'description
