@@ -143,7 +143,7 @@
 (defun clasker-intern-ticket (id &optional class)
   (or (gethash id clasker-ticket-table)
       (puthash id (make-instance (or (car (member class clasker-allowed-ticket-classes))
-                                     'clasker-ticket))
+                                     (signal 'unknown-clasker-ticket-class)))
                clasker-ticket-table)))
 
 ;;; Load an individual ticket given by the identifier ID. It could modify
