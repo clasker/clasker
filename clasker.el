@@ -133,12 +133,18 @@
 (defvar clasker-ticket-table
   (make-hash-table :test 'equal :weakness 'value))
 
+;;; Contribs that add new subclasses of clasker-ticket should put the class name
+;;; in this list. We use it to make sure we only load tickets we can load
+(defvar clasker-allowed-ticket-classes '(clasker-ticket) "Allowed classes")
+
 (defun clasker-ticket-id (ticket)
   (list (oref ticket filename) (oref ticket line)))
 
-(defun clasker-intern-ticket (id)
+(defun clasker-intern-ticket (id &optional class)
   (or (gethash id clasker-ticket-table)
-      (puthash id (make-instance 'clasker-ticket) clasker-ticket-table)))
+      (puthash id (make-instance (or (car (member class clasker-allowed-ticket-classes))
+                                     'clasker-ticket))
+               clasker-ticket-table)))
 
 ;;; Load an individual ticket given by the identifier ID. It could modify
 ;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
@@ -160,10 +166,12 @@
                                             (clasker--unquote-string (cdr prop))
                                           (cdr prop))))
                                 raw-props))
-                 (ticket (clasker-intern-ticket id)))
+                 (class (cdr (assq 'class props)))
+                 (ticket (clasker-intern-ticket id class)))
             (oset ticket properties props)
             (oset ticket filename filename)
             (oset ticket line (line-number-at-pos))
+            (clasker-ticket-set-property ticket 'class class)
             ticket))))))
 
 ;;; Resolve a ticket identifier. It is like `clasker-load-id', but it tries not
@@ -269,7 +277,8 @@
         (let ((tickets nil))
           (while (< (point) (point-max))
             (ignore-errors
-              (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
+              (let* ((line (buffer-substring (line-beginning-position)
+                                             (line-end-position)))
                      (raw-props (read-from-whole-string line))
                      (props (mapcar (lambda (prop)
                                       (cons (car prop)
@@ -277,7 +286,10 @@
                                                 (clasker--unquote-string (cdr prop))
                                               (cdr prop))))
                                     raw-props))
-                     (ticket (clasker-intern-ticket (list filename (line-number-at-pos)))))
+                     (class (cdr (assq 'class props)))
+                     (ticket (clasker-intern-ticket (list filename
+                                                          (line-number-at-pos))
+                                                    class)))
                 (oset ticket properties props)
                 (oset ticket filename filename)
                 (oset ticket line (line-number-at-pos))
@@ -533,7 +545,7 @@ list of tickets to be shown in the current view.")
               (unless (or (null value2) (zerop value2))
                 (princ (format " %d%s" value2 name2))))))))
 
-(defun clasker-ticket-headline (ticket)
+(defmethod clasker-ticket-headline ((ticket clasker-ticket))
   (let* ((lines (split-string (clasker-ticket-description ticket) "\n"))
          (header (first lines)))
     (if (< 1 (length lines))
@@ -592,6 +604,7 @@ list of tickets to be shown in the current view.")
           (setf ticket (make-instance 'clasker-ticket))
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
+          (clasker-ticket-set-property ticket 'class 'clasker-ticket)
           (clasker-save-ticket ticket)
           (clasker-revert))))))
 
@@ -610,6 +623,7 @@ list of tickets to be shown in the current view.")
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
           (clasker-ticket-set-property ticket 'parent parent-id)
+          (clasker-ticket-set-property ticket 'class 'clasker-ticket)
           (clasker-save-ticket ticket)
           (clasker-revert))))))
 
