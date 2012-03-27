@@ -308,6 +308,13 @@
   (let ((timestamp (clasker-ticket-timestamp ticket)))
     (and timestamp (float-time (time-subtract (current-time) timestamp)))))
 
+
+;;; Ticket and text
+
+(defsubst clasker-ticket-at-point ()
+  (get-text-property (point) 'clasker-ticket))
+
+
 
 ;;;; Sources and Backends
 
@@ -482,6 +489,9 @@ list of tickets to be shown in the current view.")
 
 ;;;; User commands and interface
 
+(defvar clasker-title "Clasker"
+  "The title of the *clasker* buffer.")
+
 (defun clasker-active-tickets ()
   "Return a list of active tickets."
   (cond
@@ -563,7 +573,7 @@ list of tickets to be shown in the current view.")
   (let ((position (point))
         (inhibit-read-only t))
     (erase-buffer)
-    (insert (propertize "Clasker\n" 'font-lock-face 'info-title-1) "\n")
+    (insert (propertize clasker-title 'font-lock-face 'info-title-1) "\n\n")
     (clasker-show-tickets (clasker-current-view))
     (run-hooks 'clasker-display-hook)
     (goto-char (min position (point-max)))))
@@ -622,16 +632,16 @@ list of tickets to be shown in the current view.")
     (goto-char end)))
 
 (defun clasker-next-ticket (&optional arg)
-    (interactive "p")
+  (interactive "p")
   (setq arg (or arg 1))
-  (dotimes (i arg) (clasker--following-single-ticket
-                    'next-single-property-change)))
+  (dotimes (_i arg)
+    (clasker--following-single-ticket 'next-single-property-change)))
 
 (defun clasker-previous-ticket (&optional arg)
-    (interactive "p")
+  (interactive "p")
   (setq arg (or arg 1))
-  (dotimes (i arg) (clasker--following-single-ticket
-                    'previous-single-property-change)))
+  (dotimes (_i arg)
+    (clasker--following-single-ticket 'previous-single-property-change)))
 
 (defun clasker--following-single-ticket (movement-func)
   (let ((ticket (clasker-ticket-at-point))
@@ -679,9 +689,6 @@ list of tickets to be shown in the current view.")
   (interactive "fOpen Clasker file: ")
   (setf clasker-file arg)
   (clasker-revert))
-
-(defun clasker-ticket-at-point ()
-  (get-text-property (point) 'clasker-ticket))
 
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
