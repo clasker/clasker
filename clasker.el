@@ -488,11 +488,11 @@ list of tickets to be shown in the current view.")
       (unless (funcall f ticket)
         (return t)))))
 
-(defun clasker-filter-tickets (ticket-list &optional filters)
+(defun clasker-filter-tickets (ticket-list)
   (let* ((list (list 'list-of-tickets))
          (tail (last list)))
     (dolist (ticket ticket-list)
-      (unless (clasker-ticket-filtered ticket (or filters clasker-active-filters))
+      (unless (clasker-ticket-filtered ticket clasker-active-filters)
         (setf (cdr tail) (list ticket))
         (setf tail (cdr tail))))
     (rest list)))
@@ -747,21 +747,6 @@ list of tickets to be shown in the current view.")
   (switch-to-buffer "*Clasker*")
   (clasker-mode)
   (clasker-revert))
-
-(defun clasker-filter-son-of (regex)
-  (interactive "s")
-  ;; look for roots of the tree
-  (let* ((desc regex)
-         (roots
-          (clasker-filter-tickets
-           (clasker-load-tickets)
-           (list (lambda (x) (string-match desc (clasker-ticket-get-property x 'description)))))))
-    ;; when ticket passes one filter, it returns t, keep iterating till nil
-    (lambda (y)
-      (block nil
-        (dolist (root roots nil)
-          (when (clasker-ticket-ancestor-p root y)
-            (return t)))))))
 
 (provide 'clasker)
 
