@@ -80,3 +80,9 @@
 *** TODO make tickets disapear after a while after closed
 
 *** TODO Modify state of issues from clasker to gh. assignee, labels, close
+*** TODO external script to create and modify tickets
+***** ~/clasker/
+***** ~/clasker/tickets
+***** ~/clasker/external/
+***** -s "path" , CLASKER_PATH, default dir (~/)
+***** timestamp in external/
