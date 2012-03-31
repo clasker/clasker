@@ -122,6 +122,26 @@ class whose name is CLASS2. Otherwise return NIL."
        (class-p class2)
        (child-of-class-p class1 class2)))
 
+(defun clasker--quote-string (string)
+  (replace-regexp-in-string "\n" "\\\\n"
+   (replace-regexp-in-string "\\\\" "\\\\\\\\" string)))
+
+(defun clasker--unquote-string (string)
+  (with-temp-buffer
+    (insert string)
+    (goto-char (point-min))
+    (while (search-forward "\\" nil t)
+      (case (char-after)
+        (?n
+         (delete-char -1)
+         (delete-char 1)
+         (newline))
+        (t
+         (delete-char -1)
+         (forward-char))))
+    (buffer-string)))
+
+
 ;;; This variable keeps a weak hash table which associates ticket identifiers as
 ;;; (FILENAME lineno) with the ticket objects itself. It is useful to reload
 ;;; tickets from disks preserving the eq-identity.
@@ -151,13 +171,7 @@ class whose name is CLASS2. Otherwise return NIL."
         (forward-line (1- lineno))
         (ignore-errors
           (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
-                 (raw-props (read-from-whole-string line))
-                 (props (mapcar (lambda (prop)
-                                  (cons (car prop)
-                                        (if (stringp (cdr prop))
-                                            (clasker--unquote-string (cdr prop))
-                                          (cdr prop))))
-                                raw-props))
+                 (props (read-from-whole-string (clasker--unquote-string line)))
                  (class (cdr (assq 'class props)))
                  (ticket (clasker-intern-ticket id class)))
             (oset ticket properties props)
@@ -221,24 +235,6 @@ class whose name is CLASS2. Otherwise return NIL."
          (clasker-ticket-ancestor-p ancestor (clasker-ticket-parent child))
        nil))))
 
-(defun clasker--quote-string (string)
-  (replace-regexp-in-string "\n" "\\\\n"
-   (replace-regexp-in-string "\\\\" "\\\\\\\\" string)))
-
-(defun clasker--unquote-string (string)
-  (with-temp-buffer
-    (insert string)
-    (goto-char (point-min))
-    (while (search-forward "\\" nil t)
-      (case (char-after)
-        (?n
-         (delete-char -1)
-         (delete-char 1)
-         (newline))
-        (t
-         (delete-char -1)
-         (forward-char))))
-    (buffer-string)))
 
 (defmethod clasker-save-ticket ((ticket clasker-ticket))
   (let ((line (oref ticket line)))
@@ -252,17 +248,13 @@ class whose name is CLASS2. Otherwise return NIL."
         (delete-region (line-beginning-position) (line-end-position)))
       (oset ticket filename clasker-ticket-file)
       (oset ticket line (line-number-at-pos))
-      (let ((standard-output (current-buffer)))
-        (insert "(")
-        (dolist (property (oref ticket properties))
-          (let ((key (symbol-name (car property)))
-                (value (typecase (cdr property)
-                         (string (prin1-to-string (clasker--quote-string (cdr property))))
-                         (t (prin1-to-string (cdr property))))))
-            (insert "(" key " . " value ")")))
-        (insert ")")
+      (let ((properties (oref ticket properties)))
+        (insert (clasker--quote-string (prin1-to-string properties )))
         (unless line (insert "\n"))))))
 
+
+(defsubst clasker--line-string ()
+  (buffer-substring (line-beginning-position) (line-end-position)))
 
 (defun clasker-load-tickets (&optional filename)
   (let ((filename (or filename clasker-ticket-file)))
@@ -273,19 +265,10 @@ class whose name is CLASS2. Otherwise return NIL."
         (let ((tickets nil))
           (while (< (point) (point-max))
             (ignore-errors
-              (let* ((line (buffer-substring (line-beginning-position)
-                                             (line-end-position)))
-                     (raw-props (read-from-whole-string line))
-                     (props (mapcar (lambda (prop)
-                                      (cons (car prop)
-                                            (if (stringp (cdr prop))
-                                                (clasker--unquote-string (cdr prop))
-                                              (cdr prop))))
-                                    raw-props))
+              (let* ((line (clasker--line-string))
+                     (props (read-from-whole-string (clasker--unquote-string line)))
                      (class (cdr (assq 'class props)))
-                     (ticket (clasker-intern-ticket (list filename
-                                                          (line-number-at-pos))
-                                                    class)))
+                     (ticket (clasker-intern-ticket (list filename (line-number-at-pos)) class)))
                 (oset ticket properties props)
                 (oset ticket filename filename)
                 (oset ticket line (line-number-at-pos))
@@ -322,15 +305,6 @@ class whose name is CLASS2. Otherwise return NIL."
 (defsubst clasker-ticket-at-point ()
   (get-text-property (point) 'clasker-ticket))
 
-
-
-;;;; Sources and Backends
-
-(defclass clasker-source ()
-  nil)
-
-(defgeneric clasker-source-fetch-tickets (source))
-(defgeneric clasker-source-push-ticket (source ticket))
 
 ;;;; Actions
 
@@ -375,25 +349,6 @@ class whose name is CLASS2. Otherwise return NIL."
       (delete-window window)
       value)))
 
-
-(defmacro clasker-with-new-window (buffer-name height &rest body)
-  (declare (indent 1))
-  (let ((window (make-symbol "window"))
-        (buffer (make-symbol "buffer")))
-    `(save-excursion
-       (let ((,window (split-window-vertically (- (window-height) ,height)))
-             (,buffer (generate-new-buffer ,buffer-name)))
-         (select-window ,window)
-         (switch-to-buffer ,buffer t)
-         (erase-buffer)
-         ,@body))))
-
-(defvar current-ticket)
-(defun clasker-action-edit (ticket)
-  (clasker-with-new-window "*Clasker Edit*" 10
-    (clasker-edit-mode)
-    (set (make-local-variable 'current-ticket) ticket)
-    (insert (clasker-ticket-description ticket))))
 
 (defun clasker-action-archive (ticket)
   (clasker-ticket-set-property ticket 'archived t)
@@ -732,6 +687,24 @@ list of tickets to be shown in the current view.")
 
 
 (defvar current-ticket)
+
+(defmacro clasker-with-new-window (buffer-name height &rest body)
+  (declare (indent 1))
+  (let ((window (make-symbol "window"))
+        (buffer (make-symbol "buffer")))
+    `(save-excursion
+       (let ((,window (split-window-vertically (- (window-height) ,height)))
+             (,buffer (generate-new-buffer ,buffer-name)))
+         (select-window ,window)
+         (switch-to-buffer ,buffer t)
+         (erase-buffer)
+         ,@body))))
+
+(defun clasker-action-edit (ticket)
+  (clasker-with-new-window "*Clasker Edit*" 10
+    (clasker-edit-mode)
+    (set (make-local-variable 'current-ticket) ticket)
+    (insert (clasker-ticket-description ticket))))
 
 (defun clasker-edit-save-ticket ()
   (interactive)
