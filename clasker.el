@@ -118,10 +118,19 @@
 (defvar clasker-ticket-table
   (make-hash-table :test 'equal :weakness 'value))
 
-;;; Contribs that add new subclasses of clasker-ticket should put the class name
-;;; in this list. We use it to make sure we only load tickets we can load
+
+(defun clasker-subclass-p (class1 class2)
+  "Return T if the symbol CLASS1 designates a subclass of the
+class whose name is CLASS2. Otherwise return NIL."
+  (and (class-p class1)
+       (class-p class2)
+       (child-of-class-p class1 class2)))
+
+
 (defvar clasker-allowed-ticket-classes '(clasker-ticket)
-  "Allowed classes")
+  "Allowed classes. Contribs that add new subclasses of
+  clasker-ticket should put the class name in this list. We use
+  it to make sure we only load tickets we can load.")
 
 (defun clasker-ticket-id (ticket)
   (list (oref ticket filename) (oref ticket line)))
