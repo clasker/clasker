@@ -50,36 +50,17 @@
 ;;;
 ;;;    PARENT
 ;;;
-;;;       Specify a hierarchy relationship with other ticket. If it is an
-;;;       integer, it refers to the ticket stored in the same file with that
-;;;       line number. It could also specify the file explicitly if the value is
-;;;       a list as ("<FILENAME>" <integer>). The recommended way to look for a
-;;;       property value in nearest ancestor is
-;;;       `clasker-ticket-get-property-in-hierarchy'.
+;;;       Specify a hierarchy relationship with other ticket. It is an integer,
+;;;       it refers to the ticket stored in the same file with that line number.
 ;;;
 ;;;
 ;;; Two generic functions are provided to manipulate the properties of a ticket:
 ;;; `clasker-ticket-get-property' and `clasker-ticket-set-property'.
 ;;;
-;;; There's also support for hierarchies in tickets. The recommended way to look
-;;;
-;;; Tickets can be created by the user, but they are more often collected from
-;;; several _sources_. Sources could be other local files, remote task systems,
-;;; and so on. Tickets remember the source from which they are fetched to allow
-;;; optional ticket synchronization. Sources are described by instances of the
-;;; `clasker-source' class. The generic functions `clasker-source-fetch-tickets'
-;;; and `clasker-source-push-ticket' are provided for synchronization.
-;;;
 ;;; Finally, no every ticket has to be list in the clasker buffer. A buffer
 ;;; local variable `clasker-view-function' is supposed to keep a function which
 ;;; will return the list of tickets to show.
 ;;;
-;;; TODO: Remove after testing filters
-;;; (defun clasker-filter-gh ()
-;;;  (sort (remove-if-not (lambda (x) (clasker-ticket-get-property x 'github-id))
-;;;                       (clasker-load-tickets))
-;;;        'clasker-ticket<))
-
 
 (eval-when-compile
   (require 'cl))
