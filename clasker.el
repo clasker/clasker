@@ -125,11 +125,6 @@ class whose name is CLASS2. Otherwise return NIL."
        (class-p class2)
        (child-of-class-p class1 class2)))
 
-(defun clasker-find-ticket-class (symbol)
-  "Find the clasker ticket class for the designator SYMBOL."
-  (find-class (or symbol 'clasker-ticket)))
-
-
 (defun clasker-ticket-id (ticket)
   (list (oref ticket filename) (oref ticket line)))
 
