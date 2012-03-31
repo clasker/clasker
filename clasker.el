@@ -124,20 +124,15 @@ class whose name is CLASS2. Otherwise return NIL."
        (class-p class2)
        (child-of-class-p class1 class2)))
 
-
-(defvar clasker-allowed-ticket-classes '(clasker-ticket)
-  "Allowed classes. Contribs that add new subclasses of
-  clasker-ticket should put the class name in this list. We use
-  it to make sure we only load tickets we can load.")
-
 (defun clasker-ticket-id (ticket)
   (list (oref ticket filename) (oref ticket line)))
 
 (defun clasker-intern-ticket (id &optional class)
+  (setq class (or class 'clasker-ticket))
+  (unless (clasker-subclass-p class 'clasker-ticket)
+    (error "unknown-clasker-ticket-class"))
   (or (gethash id clasker-ticket-table)
-      (puthash id (make-instance (or (car (member class clasker-allowed-ticket-classes))
-                                     (error "unknown-clasker-ticket-class")))
-               clasker-ticket-table)))
+      (puthash id (make-instance class) clasker-ticket-table)))
 
 ;;; Load an individual ticket given by the identifier ID. It could modify
 ;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
