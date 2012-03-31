@@ -158,6 +158,23 @@ class whose name is CLASS2. Otherwise return NIL."
   (or (gethash id clasker-ticket-table)
       (puthash id (make-instance class) clasker-ticket-table)))
 
+
+(defsubst clasker--line-string ()
+  (buffer-substring (line-beginning-position) (line-end-position)))
+
+(defun clasker--parse-ticket-line ()
+  (ignore-errors
+    (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
+           (props (read-from-whole-string (clasker--unquote-string line)))
+           (class (cdr (assq 'class props)))
+           (filename (expand-file-name (buffer-file-name)))
+           (id (list filename (line-number-at-pos)))
+           (ticket (clasker-intern-ticket id class)))
+      (oset ticket properties props)
+      (oset ticket filename filename)
+      (oset ticket line (line-number-at-pos))
+      ticket)))
+
 ;;; Load an individual ticket given by the identifier ID. It could modify
 ;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
 (defun clasker-load-id (id)
@@ -169,16 +186,7 @@ class whose name is CLASS2. Otherwise return NIL."
         (insert-file-contents-literally filename)
         (goto-char (point-min))
         (forward-line (1- lineno))
-        (ignore-errors
-          (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
-                 (props (read-from-whole-string (clasker--unquote-string line)))
-                 (class (cdr (assq 'class props)))
-                 (ticket (clasker-intern-ticket id class)))
-            (oset ticket properties props)
-            (oset ticket filename filename)
-            (oset ticket line (line-number-at-pos))
-;            (clasker-ticket-set-property ticket 'class class)
-            ticket))))))
+        (clasker--parse-ticket-line)))))
 
 ;;; Resolve a ticket identifier. It is like `clasker-load-id', but it tries not
 ;;; to load the ticket from disk if it has been loaded already, so it does not
@@ -194,11 +202,12 @@ class whose name is CLASS2. Otherwise return NIL."
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
 
-(defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name &optional no-recursive)
+(defmethod clasker-ticket--get-property
+  ((ticket clasker-ticket) property-name &optional parents no-classes)
   (let ((direct-entry (assq property-name (slot-value ticket 'properties))))
     (if direct-entry
         (cdr direct-entry)
-      (unless no-recursive
+      (unless no-classes
         (let ((classes (clasker-ticket-classes ticket))
               (prop nil))
           (while (and classes (not prop))
@@ -210,9 +219,6 @@ class whose name is CLASS2. Otherwise return NIL."
   (if (assoc property (slot-value ticket 'properties))
       (setcdr (assoc property (slot-value ticket 'properties)) value)
     (clasker-ticket--add-property ticket property value)))
-
-(defmethod clasker-ticket-set-class ((ticket clasker-ticket)  value)
-  (clasker-ticket-set-property ticket 'class value))
 
 (defmethod clasker-ticket-delete-property ((ticket clasker-ticket) property)
   (let ((property-list (slot-value ticket 'properties)))
@@ -253,8 +259,18 @@ class whose name is CLASS2. Otherwise return NIL."
         (unless line (insert "\n"))))))
 
 
-(defsubst clasker--line-string ()
-  (buffer-substring (line-beginning-position) (line-end-position)))
+(defmacro clasker-with-collect (&rest body)
+  (declare (indent defun))
+  (let ((head (gensym))
+        (tail (gensym)))
+    `(let* ((,head '(collect))
+            (,tail ,head))
+       (flet ((collect (x)
+                (setf (cdr ,tail) (cons x nil))
+                (setf ,tail (cdr ,tail))))
+         ,@body)
+       (cdr ,head))))
+
 
 (defun clasker-load-tickets (&optional filename)
   (let ((filename (or filename clasker-ticket-file)))
@@ -262,22 +278,16 @@ class whose name is CLASS2. Otherwise return NIL."
       (with-temp-buffer
         (insert-file-contents filename)
         (goto-char (point-min))
-        (let ((tickets nil))
+        (clasker-with-collect
           (while (< (point) (point-max))
-            (ignore-errors
-              (let* ((line (clasker--line-string))
-                     (props (read-from-whole-string (clasker--unquote-string line)))
-                     (class (cdr (assq 'class props)))
-                     (ticket (clasker-intern-ticket (list filename (line-number-at-pos)) class)))
-                (oset ticket properties props)
-                (oset ticket filename filename)
-                (oset ticket line (line-number-at-pos))
-                (push ticket tickets)))
-            (forward-line))
-          (nreverse tickets))))))
+            (collect (clasker--parse-ticket-line))
+            (forward-line)))))))
 
 
 ;;; Ticket accessors
+
+(defmethod clasker-ticket-set-class ((ticket clasker-ticket)  value)
+  (clasker-ticket-set-property ticket 'class value))
 
 (defun clasker-ticket-classes (ticket)
   (clasker-ticket-get-property ticket 'classes t))
@@ -300,10 +310,42 @@ class whose name is CLASS2. Otherwise return NIL."
     (and timestamp (float-time (time-subtract (current-time) timestamp)))))
 
 
-;;; Ticket and text
+;;; Operations on text of tickets
 
 (defsubst clasker-ticket-at-point ()
   (get-text-property (point) 'clasker-ticket))
+
+(defun clasker-beginning-of-ticket ()
+  (interactive)
+  (goto-char (or (previous-single-property-change (1+ (point)) 'clasker-ticket)
+       (point-min))))
+
+(defun clasker-end-of-ticket ()
+  (interactive)
+  (let ((end  (next-single-property-change (point) 'clasker-ticket)))
+    (goto-char (1- (or end (point-max))))))
+
+(defun clasker--following-single-ticket (movement-func)
+  (let ((ticket (clasker-ticket-at-point))
+        (point (point)))
+    (setq next-ticket-pos (funcall movement-func  point 'clasker-ticket))
+    (while (and next-ticket-pos
+                (or (not (get-text-property next-ticket-pos 'clasker-ticket))
+                    (equal next-ticket-pos ticket)))
+      (setq next-ticket-pos (funcall movement-func next-ticket-pos 'clasker-ticket)))
+    (goto-char (if next-ticket-pos next-ticket-pos point))))
+
+(defun clasker-next-ticket (&optional arg)
+  (interactive "p")
+  (setq arg (or arg 1))
+  (dotimes (_i arg)
+    (clasker--following-single-ticket 'next-single-property-change)))
+
+(defun clasker-previous-ticket (&optional arg)
+  (interactive "p")
+  (setq arg (or arg 1))
+  (dotimes (_i arg)
+    (clasker--following-single-ticket 'previous-single-property-change)))
 
 
 ;;;; Actions
@@ -431,13 +473,10 @@ list of tickets to be shown in the current view.")
         (return t)))))
 
 (defun clasker-filter-tickets (ticket-list)
-  (let* ((list (list 'list-of-tickets))
-         (tail (last list)))
+  (clasker-with-collect 
     (dolist (ticket ticket-list)
       (unless (clasker-ticket-filtered ticket clasker-active-filters)
-        (setf (cdr tail) (list ticket))
-        (setf tail (cdr tail))))
-    (rest list)))
+        (collect ticket)))))
 
 (defun clasker-filter-only ()
   (interactive)
@@ -579,44 +618,12 @@ list of tickets to be shown in the current view.")
           (clasker-revert))))))
 
 
-(defun clasker-beginning-of-ticket ()
-  (interactive)
-  (goto-char (or (previous-single-property-change (1+ (point)) 'clasker-ticket)
-       (point-min))))
-
-(defun clasker-end-of-ticket ()
-  (interactive)
-  (let ((end  (next-single-property-change (point) 'clasker-ticket)))
-    (goto-char  (1- (or end
-                     (point-max))))))
-
 (defun clasker-mark-ticket-pos ()
   (interactive)
   (let ((end (clasker-end-of-ticket)))
     (push-mark (clasker-beginning-of-ticket) t nil)
     (goto-char end)))
 
-(defun clasker-next-ticket (&optional arg)
-  (interactive "p")
-  (setq arg (or arg 1))
-  (dotimes (_i arg)
-    (clasker--following-single-ticket 'next-single-property-change)))
-
-(defun clasker-previous-ticket (&optional arg)
-  (interactive "p")
-  (setq arg (or arg 1))
-  (dotimes (_i arg)
-    (clasker--following-single-ticket 'previous-single-property-change)))
-
-(defun clasker--following-single-ticket (movement-func)
-  (let ((ticket (clasker-ticket-at-point))
-        (point (point)))
-    (setq next-ticket-pos (funcall movement-func  point 'clasker-ticket))
-    (while (and next-ticket-pos
-                (or (not (get-text-property next-ticket-pos 'clasker-ticket))
-                    (equal next-ticket-pos ticket)))
-      (setq next-ticket-pos (funcall movement-func next-ticket-pos 'clasker-ticket)))
-    (goto-char (if next-ticket-pos next-ticket-pos point))))
 
 (defun clasker-mark-ticket (arg)
   ;; TODO: Fix to work with negative arguments.
