@@ -111,6 +111,10 @@
     :initform ()
     :type list)))
 
+(defmethod initialize-instance :after ((ticket clasker-ticket) _slots)
+  (unless (eq (class-of ticket) 'clasker-ticket)
+    (clasker-ticket-set-class ticket (class-of ticket))))
+
 (defun clasker-subclass-p (class1 class2)
   "Return T if the symbol CLASS1 designates a subclass of the
 class whose name is CLASS2. Otherwise return NIL."
@@ -175,9 +179,6 @@ class whose name is CLASS2. Otherwise return NIL."
 
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
-
-(defmethod initialize-instance :after ((ticket clasker-ticket) _slots)
-  (clasker-ticket-set-class ticket (class-of ticket)))
 
 (defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name &optional no-recursive)
   (let ((direct-entry (assq property-name (slot-value ticket 'properties))))
