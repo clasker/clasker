@@ -228,15 +228,10 @@ class whose name is CLASS2. Otherwise return NIL."
 (defalias 'clasker-ticket-get-property 'clasker-ticket--get-property)
 
 
-
 (defun clasker-ticket-ancestor-p (ancestor child)
-  (let ((ancestor-id (oref ancestor line)))
-    (or
-     (equal ancestor-id (oref child line))
-     (if (clasker-ticket-parent child)
-         (clasker-ticket-ancestor-p ancestor (clasker-ticket-parent child))
-       nil))))
-
+  (while (and child (not (eq ancestor child)))
+    (setq child (clasker-ticket-parent child)))
+  (eq ancestor child))
 
 (defmethod clasker-save-ticket ((ticket clasker-ticket))
   (let ((line (oref ticket line)))
@@ -443,7 +438,7 @@ list of tickets to be shown in the current view.")
   (funcall clasker-view-function))
 
 
-;;; Filtering
+;;; Filters
 
 (defvar clasker-default-filters nil
   "list of default filters to apply")
