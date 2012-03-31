@@ -117,12 +117,18 @@
 (defvar clasker-ticket-table
   (make-hash-table :test 'equal :weakness 'value))
 
+
 (defun clasker-subclass-p (class1 class2)
   "Return T if the symbol CLASS1 designates a subclass of the
 class whose name is CLASS2. Otherwise return NIL."
   (and (class-p class1)
        (class-p class2)
        (child-of-class-p class1 class2)))
+
+(defun clasker-find-ticket-class (symbol)
+  "Find the clasker ticket class for the designator SYMBOL."
+  (find-class (or symbol 'clasker-ticket)))
+
 
 (defun clasker-ticket-id (ticket)
   (list (oref ticket filename) (oref ticket line)))
