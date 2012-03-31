@@ -111,19 +111,18 @@
     :initform ()
     :type list)))
 
-;;; This variable keeps a weak hash table which associates ticket identifiers as
-;;; (FILENAME lineno) with the ticket objects itself. It is useful to reload
-;;; tickets from disks preserving the eq-identity.
-(defvar clasker-ticket-table
-  (make-hash-table :test 'equal :weakness 'value))
-
-
 (defun clasker-subclass-p (class1 class2)
   "Return T if the symbol CLASS1 designates a subclass of the
 class whose name is CLASS2. Otherwise return NIL."
   (and (class-p class1)
        (class-p class2)
        (child-of-class-p class1 class2)))
+
+;;; This variable keeps a weak hash table which associates ticket identifiers as
+;;; (FILENAME lineno) with the ticket objects itself. It is useful to reload
+;;; tickets from disks preserving the eq-identity.
+(defvar clasker-ticket-table
+  (make-hash-table :test 'equal :weakness 'value))
 
 (defun clasker-ticket-id (ticket)
   (list (oref ticket filename) (oref ticket line)))
