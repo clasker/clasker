@@ -96,11 +96,15 @@
   :prefix "clasker-"
   :group 'applications)
 
-
+(defcustom clasker-directory "~/.clasker.d/"
+  "Clasker directory"
+  :group 'clasker)
+(unless(file-exists-p clasker-directory)
+  (make-directory clasker-directory))
 
 ;;;; Tickets
 
-(defcustom clasker-file "~/.clasker"
+(defcustom clasker-ticket-file (concat clasker-directory "tickets")
   "File where clasker file tickets are"
   :type 'file
   :group 'clasker)
@@ -149,12 +153,12 @@
 ;;; Load an individual ticket given by the identifier ID. It could modify
 ;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
 (defun clasker-load-id (id)
-  (let* ((filename (or (car id) clasker-file))
+  (let* ((filename (or (car id) clasker-ticket-file))
         (lineno (cadr id))
         (id `(,(expand-file-name filename) ,lineno)))
     (when (file-readable-p filename)
       (with-temp-buffer
-        (insert-file-contents filename)
+        (insert-file-contents-literally filename)
         (goto-char (point-min))
         (forward-line (1- lineno))
         (ignore-errors
@@ -180,7 +184,7 @@
 (defun clasker-resolve-id (id)
   (let ((full-id
          (if (integerp id)
-             `(,(expand-file-name clasker-file) ,id)
+             `(,(expand-file-name clasker-ticket-file) ,id)
            id)))
     (or (gethash full-id clasker-ticket-table)
         (clasker-load-id full-id))))
@@ -188,11 +192,8 @@
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
 
-(defmethod initialize-instance :after ((ticket clasker-ticket) slots)
-  (message (format "%s" (class-of ticket)))
-  (clasker-ticket-set-class ticket (class-of ticket))
-;  (when (next-method-p) (call-next-method))
-  )
+(defmethod initialize-instance :after ((ticket clasker-ticket) _slots)
+  (clasker-ticket-set-class ticket (class-of ticket)))
 
 (defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name &optional no-recursive)
   (let ((direct-entry (assq property-name (slot-value ticket 'properties))))
@@ -256,14 +257,15 @@
 
 (defmethod clasker-save-ticket ((ticket clasker-ticket))
   (let ((line (oref ticket line)))
-    (with-temp-file clasker-file
-      (insert-file-contents-literally clasker-file)
+    (with-temp-file clasker-ticket-file
+      (when (file-readable-p clasker-ticket-file)
+        (insert-file-contents-literally clasker-ticket-file))
       (if (not line)
           (goto-char (point-max))
         (goto-char (point-min))
         (forward-line (1- line))
         (delete-region (line-beginning-position) (line-end-position)))
-      (oset ticket filename clasker-file)
+      (oset ticket filename clasker-ticket-file)
       (oset ticket line (line-number-at-pos))
       (let ((standard-output (current-buffer)))
         (insert "(")
@@ -278,7 +280,7 @@
 
 
 (defun clasker-load-tickets (&optional filename)
-  (let ((filename (or filename clasker-file)))
+  (let ((filename (or filename clasker-ticket-file)))
     (when (file-readable-p filename)
       (with-temp-buffer
         (insert-file-contents filename)
@@ -708,11 +710,6 @@ list of tickets to be shown in the current view.")
         (funcall action ticket))))
   (clasker-revert))
 
-(defun clasker-open-file (arg)
-  (interactive "fOpen Clasker file: ")
-  (setf clasker-file arg)
-  (clasker-revert))
-
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "g") 'revert-buffer)
@@ -723,7 +720,6 @@ list of tickets to be shown in the current view.")
     (define-key map (kbd "m") 'clasker-mark-ticket)
     (define-key map (kbd "u") 'clasker-unmark-ticket)
     (define-key map (kbd "p") 'clasker-previous-ticket)
-    (define-key map (kbd "C-c C-f") 'clasker-open-file)
     (define-key map (kbd "o") 'clasker-filter-only)
     (define-key map (kbd "^") 'clasker-remove-filters)
     (define-key map (kbd "RET") 'clasker-do)
@@ -773,7 +769,6 @@ list of tickets to be shown in the current view.")
 
 (define-derived-mode clasker-edit-mode text-mode "Clasker Edit"
   "docstring")
-
 
 
 (provide 'clasker)
