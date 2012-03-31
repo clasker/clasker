@@ -120,7 +120,8 @@
 
 ;;; Contribs that add new subclasses of clasker-ticket should put the class name
 ;;; in this list. We use it to make sure we only load tickets we can load
-(defvar clasker-allowed-ticket-classes '(clasker-ticket) "Allowed classes")
+(defvar clasker-allowed-ticket-classes '(clasker-ticket)
+  "Allowed classes")
 
 (defun clasker-ticket-id (ticket)
   (list (oref ticket filename) (oref ticket line)))
