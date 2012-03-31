@@ -70,7 +70,6 @@
     (error "You need at least Emacs 24 to use Clasker.")))
 
 (require 'eieio)
-(require 'clasker-edit)
 
 (defgroup clasker nil
   "Experimental task management."
@@ -117,7 +116,6 @@
 ;;; tickets from disks preserving the eq-identity.
 (defvar clasker-ticket-table
   (make-hash-table :test 'equal :weakness 'value))
-
 
 (defun clasker-subclass-p (class1 class2)
   "Return T if the symbol CLASS1 designates a subclass of the
