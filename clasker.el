@@ -159,21 +159,15 @@ class whose name is CLASS2. Otherwise return NIL."
       (puthash id (make-instance class) clasker-ticket-table)))
 
 
-(defsubst clasker--line-string ()
-  (buffer-substring (line-beginning-position) (line-end-position)))
-
-(defun clasker--parse-ticket-line ()
-  (ignore-errors
-    (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
-           (props (read-from-whole-string (clasker--unquote-string line)))
-           (class (cdr (assq 'class props)))
-           (filename (expand-file-name (buffer-file-name)))
-           (id (list filename (line-number-at-pos)))
-           (ticket (clasker-intern-ticket id class)))
-      (oset ticket properties props)
-      (oset ticket filename filename)
-      (oset ticket line (line-number-at-pos))
-      ticket)))
+(defun clasker--parse-ticket-line (&optional id)
+  (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
+         (props (ignore-errors (read-from-whole-string (clasker--unquote-string line))))
+         (class (cdr (assq 'class props)))
+         (ticket (if id (clasker-intern-ticket id class) (make-instance class))))
+    (oset ticket properties props)
+    (oset ticket filename (car id))
+    (oset ticket line (cadr id))
+    ticket))
 
 ;;; Load an individual ticket given by the identifier ID. It could modify
 ;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
@@ -186,7 +180,7 @@ class whose name is CLASS2. Otherwise return NIL."
         (insert-file-contents-literally filename)
         (goto-char (point-min))
         (forward-line (1- lineno))
-        (clasker--parse-ticket-line)))))
+        (clasker--parse-ticket-line id)))))
 
 ;;; Resolve a ticket identifier. It is like `clasker-load-id', but it tries not
 ;;; to load the ticket from disk if it has been loaded already, so it does not
@@ -202,36 +196,38 @@ class whose name is CLASS2. Otherwise return NIL."
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
 
-(defmethod clasker-ticket--get-property
-  ((ticket clasker-ticket) property-name &optional parents no-classes)
-  (let ((direct-entry (assq property-name (slot-value ticket 'properties))))
-    (if direct-entry
-        (cdr direct-entry)
-      (unless no-classes
-        (let ((classes (clasker-ticket-classes ticket))
-              (prop nil))
-          (while (and classes (not prop))
-            (setq prop (get (first classes) property-name))
-            (setq classes (rest classes)))
-          prop)))))
+(defmethod clasker-ticket--get-property ((ticket clasker-ticket) property-name)
+  (assq property-name (slot-value ticket 'properties)))
 
-(defmethod clasker-ticket-set-property ((ticket clasker-ticket) property value)
+(defmethod clasker-ticket--set-property ((ticket clasker-ticket) property value)
   (if (assoc property (slot-value ticket 'properties))
       (setcdr (assoc property (slot-value ticket 'properties)) value)
     (clasker-ticket--add-property ticket property value)))
 
-(defmethod clasker-ticket-delete-property ((ticket clasker-ticket) property)
+(defmethod clasker-ticket--delete-property ((ticket clasker-ticket) property)
   (let ((property-list (slot-value ticket 'properties)))
     (when (assoc property property-list)
       (oset ticket properties (assq-delete-all property (slot-value ticket 'properties))))))
 
-(defmethod clasker-ticket-get-property-in-hierarchy ((ticket clasker-ticket) property)
-   (let ((ticket-property (clasker-ticket-get-property ticket property)))
-     (or ticket-property
-         (when (clasker-ticket-parent ticket)
-           (clasker-ticket-get-property-in-hierarchy
-            (clasker-ticket-parent ticket)
-            property)))))
+
+(defmethod clasker-ticket-get-property
+  ((ticket clasker-ticket) property &optional parents no-classes)
+  (let ((value nil))
+    (while (or (not value) parent (<= 0 parents))
+      (setq value (clasker-ticket--get-property ticket property))
+      (unless (or value no-classes)
+        (let ((classes (clasker-ticket-classes ticket)))
+          (while (and classes (not value))
+            (setq value (get (car classes) property))
+            (setq classes (rest classes)))))
+      (when (numberp parents)
+        (decf parents))
+      (setq ticket (clasker-ticket-parent ticket)))))
+
+(defalias 'clasker-ticket-set-property 'clasker-ticket--set-property)
+(defalias 'clasker-ticket-get-property 'clasker-ticket--get-property)
+
+
 
 (defun clasker-ticket-ancestor-p (ancestor child)
   (let ((ancestor-id (oref ancestor line)))
@@ -273,14 +269,14 @@ class whose name is CLASS2. Otherwise return NIL."
 
 
 (defun clasker-load-tickets (&optional filename)
-  (let ((filename (or filename clasker-ticket-file)))
+  (let ((filename (expand-file-name (or filename clasker-ticket-file))))
     (when (file-readable-p filename)
       (with-temp-buffer
         (insert-file-contents filename)
         (goto-char (point-min))
         (clasker-with-collect
           (while (< (point) (point-max))
-            (collect (clasker--parse-ticket-line))
+            (collect (clasker--parse-ticket-line `(,filename ,(line-number-at-pos))))
             (forward-line)))))))
 
 
