@@ -388,6 +388,18 @@
       (delete-window window)
       value)))
 
+(defun clasker-shortcuts (l)
+  (let ((abbrevs (make-hash-table :test 'equal)))
+    (dolist (item l)
+      (let ((count 0))
+        (while (and (gethash (substring (car item) count  (+ count 1)) abbrevs)
+                    (gethash (capitalize (substring (car item) count  (+ count 1))) abbrevs))
+          (incf count))
+        (puthash (funcall (if (gethash (substring (car item) count  (+ count 1)) abbrevs)
+                              #'capitalize (lambda (x) x))
+                          (substring (car item) count (+ count 1)))
+                 (cdr item) abbrevs)))
+    abbrevs))
 
 (defmacro clasker-with-new-window (buffer-name height &rest body)
   (declare (indent 1))
