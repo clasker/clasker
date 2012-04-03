@@ -197,35 +197,42 @@ class whose name is CLASS2. Otherwise return NIL."
   (object-add-to-list ticket 'properties (cons property value)))
 
 (defmethod clasker-ticket--get-property ((ticket clasker-ticket) property-name)
-  (assq property-name (slot-value ticket 'properties)))
+  (let ((entry (assq property-name (slot-value ticket 'properties))))
+    (and entry (cons ticket (cdr entry)))))
 
 (defmethod clasker-ticket--set-property ((ticket clasker-ticket) property value)
-  (if (assoc property (slot-value ticket 'properties))
-      (setcdr (assoc property (slot-value ticket 'properties)) value)
-    (clasker-ticket--add-property ticket property value)))
+  (let ((entry (clasker-ticket--get-property ticket property)))
+    (if entry (setcdr entry value)
+      (clasker-ticket--add-property ticket property value))))
 
 (defmethod clasker-ticket--delete-property ((ticket clasker-ticket) property)
   (let ((property-list (slot-value ticket 'properties)))
-    (when (assoc property property-list)
-      (oset ticket properties (assq-delete-all property (slot-value ticket 'properties))))))
+    (oset ticket properties (assq-delete-all property property-list))))
 
-
-(defmethod clasker-ticket-get-property
-  ((ticket clasker-ticket) property &optional parents no-classes)
-  (let ((value nil))
-    (while (or (not value) parent (<= 0 parents))
-      (setq value (clasker-ticket--get-property ticket property))
-      (unless (or value no-classes)
-        (let ((classes (clasker-ticket-classes ticket)))
+(defun clasker-ticket--get-property-1 (ticket property &optional no-classes)
+  (or (clasker-ticket--get-property ticket property)
+      (unless no-classes
+        (let ((classes (clasker-ticket-classes ticket))
+              (value nil))
           (while (and classes (not value))
             (setq value (get (car classes) property))
-            (setq classes (rest classes)))))
-      (when (numberp parents)
-        (decf parents))
-      (setq ticket (clasker-ticket-parent ticket)))))
+            (setq classes (rest classes)))
+          (cons ticket value)))))
+
+(defmethod clasker-ticket-get-property ((ticket clasker-ticket) property &optional parents no-classes)
+  (setq parents (or parents 0))
+  (let (value)
+    (block nil
+      (while t
+        (setq value (clasker-ticket--get-property-1 ticket property no-classes))
+        (if value (return)
+          (if (eql parents 0) (return)
+            (when (numberp parents) (decf parents))
+            (setf ticket (clasker-ticket-parent ticket))))))
+    (cdr value)))
 
 (defalias 'clasker-ticket-set-property 'clasker-ticket--set-property)
-(defalias 'clasker-ticket-get-property 'clasker-ticket--get-property)
+(defalias 'clasker-ticket-delete-property 'clasker-ticket--delete-property)
 
 
 (defun clasker-ticket-ancestor-p (ancestor child)
@@ -277,17 +284,17 @@ class whose name is CLASS2. Otherwise return NIL."
 
 ;;; Ticket accessors
 
-(defmethod clasker-ticket-set-class ((ticket clasker-ticket)  value)
+(defmethod clasker-ticket-set-class ((ticket clasker-ticket) value)
   (clasker-ticket-set-property ticket 'class value))
 
 (defun clasker-ticket-classes (ticket)
-  (clasker-ticket-get-property ticket 'classes t))
+  (clasker-ticket-get-property ticket 'classes nil t))
 
 (defun clasker-ticket-description (ticket)
   (clasker-ticket-get-property ticket 'description))
 
 (defun clasker-ticket-parent (ticket)
-  (let ((refer (clasker-ticket-get-property ticket 'parent t)))
+  (let ((refer (clasker-ticket-get-property ticket 'parent nil t)))
     (when refer (clasker-resolve-id refer))))
 
 (defun clasker-ticket-timestamp (ticket)
@@ -431,12 +438,10 @@ list of tickets to be shown in the current view.")
       (clasker-ticket< t1 t2)))))
 
 (defun clasker-default-view ()
-  (sort (clasker-filter-tickets (clasker-load-tickets))
-        'clasker-ticket<))
+  (sort (clasker-filter-tickets (clasker-load-tickets)) 'clasker-ticket<))
 
 (defun clasker-current-view ()
   (funcall clasker-view-function))
-
 
 ;;; Filters
 
