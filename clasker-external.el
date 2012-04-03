@@ -28,20 +28,10 @@
   (interactive)
   (dolist (file (directory-files "~/.clasker.d/export/" t "clasker-*"))
     (with-temp-buffer
-      (insert-file-contents file)
+      (insert-file-contents-literally file)
       (goto-char (point-min))
-      (ignore-errors
-        (let* ((raw-props (read-from-whole-string (buffer-string)))
-               (props (mapcar (lambda (prop)
-                                (cons (car prop)
-                                      (if (stringp (cdr prop))
-                                          (clasker--unquote-string (cdr prop))
-                                        (cdr prop))))
-                              raw-props))
-               (ticket (make-instance 'clasker-ticket)))
-          (oset ticket properties props)
-          (clasker-save-ticket ticket)
-          (delete-file file))))))
+      (clasker-save-ticket (clasker--parse-ticket-line))
+      (delete-file file))))
 
 (add-hook 'clasker-mode-hook 'clasker-import-external-tickets)
 
