@@ -43,6 +43,7 @@
           (clasker-save-ticket ticket)
           (delete-file file))))))
 
+(add-hook 'clasker-mode-hook 'clasker-import-external-tickets)
 
 (provide 'clasker-external)
 ;;; clasker-external.el ends here
