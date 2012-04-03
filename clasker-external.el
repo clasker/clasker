@@ -26,12 +26,17 @@
 
 (defun clasker-import-external-tickets ()
   (interactive)
-  (dolist (file (directory-files "~/.clasker.d/export/" t "clasker-*"))
-    (with-temp-buffer
-      (insert-file-contents-literally file)
-      (goto-char (point-min))
-      (clasker-save-ticket (clasker--parse-ticket-line))
-      (delete-file file))))
+  (let* ((external-files (directory-files "~/.clasker.d/export/" t "clasker-*"))
+         (reporter (make-progress-reporter "Collecting external tickets..." 0 (length external-files)))
+         (count 0))
+    (dolist (file external-files)
+      (with-temp-buffer
+        (insert-file-contents-literally file)
+        (goto-char (point-min))
+        (clasker-save-ticket (clasker--parse-ticket-line))
+        (delete-file file)
+        (progress-reporter-update reporter (incf count))))
+    (progress-reporter-done reporter)))
 
 (add-hook 'clasker-mode-hook 'clasker-import-external-tickets)
 
