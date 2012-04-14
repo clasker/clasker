@@ -164,9 +164,10 @@ class whose name is CLASS2. Otherwise return NIL."
          (props (ignore-errors (read-from-whole-string (clasker--unquote-string line))))
          (class (or (cdr (assq 'class props)) 'clasker-ticket))
          (ticket (if id (clasker-intern-ticket id class) (make-instance class))))
-    (oset ticket properties props)
     (oset ticket filename (car id))
     (oset ticket line (cadr id))
+    (dolist (prop props)
+      (clasker-ticket-set-property ticket (car prop) (cdr prop)))
     ticket))
 
 ;;; Load an individual ticket given by the identifier ID. It could modify
@@ -192,6 +193,23 @@ class whose name is CLASS2. Otherwise return NIL."
            id)))
     (or (gethash full-id clasker-ticket-table)
         (clasker-load-id full-id))))
+
+
+;;;; Properties
+
+(defvar clasker-inhibit-property-hook nil)
+(defvar clasker-property-hook-table
+  (make-hash-table :test #'eq))
+
+(put 'childs 'clasker-volatile t)
+
+(defun clasker-add-property-hook (property function)
+  (pushnew function (gethash property clasker-property-hook-table)))
+
+(defun clasker-run-property-hook (ticket property new-value)
+  (unless clasker-inhibit-property-hook
+    (dolist (hook (gethash property clasker-property-hook-table))
+      (funcall hook ticket property new-value))))
 
 (defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
   (object-add-to-list ticket 'properties (cons property value)))
@@ -231,8 +249,13 @@ class whose name is CLASS2. Otherwise return NIL."
             (setf ticket (clasker-ticket-parent ticket))))))
     (cdr value)))
 
-(defalias 'clasker-ticket-set-property 'clasker-ticket--set-property)
-(defalias 'clasker-ticket-delete-property 'clasker-ticket--delete-property)
+(defmethod clasker-ticket-set-property ((ticket clasker-ticket) property value)
+  (clasker-run-property-hook ticket property value)
+  (clasker-ticket--set-property ticket property value))
+
+(defmethod clasker-ticket-delete-property ((ticket clasker-ticket) property)
+  (clasker-run-property-hook ticket property nil)
+  (clasker-ticket--delete-property ticket property))
 
 
 (defun clasker-ticket-ancestor-p (ancestor child)
@@ -253,15 +276,22 @@ class whose name is CLASS2. Otherwise return NIL."
       (oset ticket filename clasker-ticket-file)
       (oset ticket line (line-number-at-pos))
       (let ((properties (oref ticket properties)))
-        (insert (clasker--quote-string (prin1-to-string properties )))
+        (insert
+         (clasker--quote-string
+          (with-output-to-string
+            (princ "(")
+            (dolist (prop properties)
+              (unless (get (car prop) 'clasker-volatile)
+                (prin1 prop)))
+            (princ ")"))))
         (unless line (insert "\n"))))))
 
 
 (defmacro clasker-with-collect (&rest body)
-  (declare (indent defun))
+  (declare (indent defun) (debug t))
   (let ((head (gensym))
         (tail (gensym)))
-    `(let* ((,head '(collect))
+    `(let* ((,head (list 'collect))
             (,tail ,head))
        (flet ((collect (x)
                 (setf (cdr ,tail) (cons x nil))
@@ -284,6 +314,29 @@ class whose name is CLASS2. Otherwise return NIL."
 
 ;;; Ticket accessors
 
+(defun clasker-ticket-parent (ticket)
+  (let ((refer (clasker-ticket-get-property ticket 'parent nil t)))
+    (when refer (clasker-resolve-id refer))))
+
+(defun clasker-update-childs (ticket _property new-value)
+  ;; (let ((clasker-inhibit-property-hook t))
+  ;;   (let ((oldparent (clasker-ticket-parent ticket))
+  ;;         (newparent (clasker-resolve-id new-value)))
+  ;;     (when oldparent
+  ;;       (let ((siblings (remove ticket (clasker-ticket-childs oldparent))))
+  ;;         (clasker-ticket-set-property oldparent 'childs (mapcar 'clasker-ticket-id siblings))))
+  ;;     (when newparent
+  ;;       (let ((siblings (cons ticket (clasker-ticket-childs newparent))))
+  ;;         (clasker-ticket-set-property newparent 'childs (mapcar 'clasker-ticket-id siblings))))))
+  )
+(clasker-add-property-hook 'parent 'clasker-update-childs)
+
+
+(defun clasker-ticket-childs (ticket)
+  (let ((refers (clasker-ticket-get-property ticket 'childs nil t)))
+    (when refers (mapcar 'clasker-resolve-id refers))))
+
+
 (defmethod clasker-ticket-class ((ticket clasker-ticket) value)
   (or (clasker-ticket-get-property ticket 'class value nil t) 'clasker-ticket))
 
@@ -297,10 +350,6 @@ class whose name is CLASS2. Otherwise return NIL."
 
 (defun clasker-ticket-description (ticket)
   (clasker-ticket-get-property ticket 'description))
-
-(defun clasker-ticket-parent (ticket)
-  (let ((refer (clasker-ticket-get-property ticket 'parent nil t)))
-    (when refer (clasker-resolve-id refer))))
 
 (defun clasker-ticket-timestamp (ticket)
   (clasker-ticket-get-property ticket 'timestamp))
@@ -506,11 +555,13 @@ list of tickets to be shown in the current view.")
           (goto-char beginning)
           (block nil
             (while (< (point) end)
-              (push (clasker-ticket-at-point) tickets)
+              (when (clasker-ticket-at-point)
+                (push (clasker-ticket-at-point) tickets))
               (or (clasker-next-ticket) (return))))))
       tickets))
    (t
-    (list (clasker-ticket-at-point)))))
+    (and (clasker-ticket-at-point)
+         (list (clasker-ticket-at-point))))))
 
 
 (defun clasker-format-seconds (seconds)
@@ -532,9 +583,9 @@ list of tickets to be shown in the current view.")
             while (zerop value1)
             finally
             (progn
-              (princ (format "%d%s" value1 name1))
+              (princ (format "%2d%s" value1 name1))
               (unless (or (null value2) (zerop value2))
-                (princ (format " %d%s" value2 name2))))))))
+                (princ (format " %02d%s" value2 name2))))))))
 
 (defmethod clasker-ticket-headline ((ticket clasker-ticket))
   (let* ((lines (split-string (clasker-ticket-description ticket) "\n"))
@@ -649,11 +700,14 @@ list of tickets to be shown in the current view.")
 
 (defun clasker-do ()
   (interactive)
-  (let ((clasker-inhibit-confirm t)
-        (action (clasker-read-action clasker-default-actions)))
-    (when action
-      (dolist (ticket (clasker-active-tickets))
-        (funcall action ticket))))
+  (let* ((clasker-inhibit-confirm t)
+         (tickets (clasker-active-tickets))
+         (actions clasker-default-actions))
+    (when (and actions tickets)
+      (let ((action (clasker-read-action actions)))
+        (when action
+          (dolist (ticket tickets)
+            (funcall action ticket))))))
   (clasker-revert))
 
 (defvar clasker-mode-map
