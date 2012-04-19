@@ -50,36 +50,17 @@
 ;;;
 ;;;    PARENT
 ;;;
-;;;       Specify a hierarchy relationship with other ticket. If it is an
-;;;       integer, it refers to the ticket stored in the same file with that
-;;;       line number. It could also specify the file explicitly if the value is
-;;;       a list as ("<FILENAME>" <integer>). The recommended way to look for a
-;;;       property value in nearest ancestor is
-;;;       `clasker-ticket-get-property-in-hierarchy'.
+;;;       Specify a hierarchy relationship with other ticket. It is an integer,
+;;;       it refers to the ticket stored in the same file with that line number.
 ;;;
 ;;;
 ;;; Two generic functions are provided to manipulate the properties of a ticket:
 ;;; `clasker-ticket-get-property' and `clasker-ticket-set-property'.
 ;;;
-;;; There's also support for hierarchies in tickets. The recommended way to look
-;;;
-;;; Tickets can be created by the user, but they are more often collected from
-;;; several _sources_. Sources could be other local files, remote task systems,
-;;; and so on. Tickets remember the source from which they are fetched to allow
-;;; optional ticket synchronization. Sources are described by instances of the
-;;; `clasker-source' class. The generic functions `clasker-source-fetch-tickets'
-;;; and `clasker-source-push-ticket' are provided for synchronization.
-;;;
 ;;; Finally, no every ticket has to be list in the clasker buffer. A buffer
 ;;; local variable `clasker-view-function' is supposed to keep a function which
 ;;; will return the list of tickets to show.
 ;;;
-;;; TODO: Remove after testing filters
-;;; (defun clasker-filter-gh ()
-;;;  (sort (remove-if-not (lambda (x) (clasker-ticket-get-property x 'github-id))
-;;;                       (clasker-load-tickets))
-;;;        'clasker-ticket<))
-
 
 (eval-when-compile
   (require 'cl))
@@ -89,18 +70,21 @@
     (error "You need at least Emacs 24 to use Clasker.")))
 
 (require 'eieio)
-(require 'clasker-edit)
 
 (defgroup clasker nil
   "Experimental task management."
   :prefix "clasker-"
   :group 'applications)
 
-
+(defcustom clasker-directory "~/.clasker.d/"
+  "Clasker directory"
+  :group 'clasker)
+(unless(file-exists-p clasker-directory)
+  (make-directory clasker-directory))
 
 ;;;; Tickets
 
-(defcustom clasker-file "~/.clasker"
+(defcustom clasker-ticket-file (concat clasker-directory "tickets")
   "File where clasker file tickets are"
   :type 'file
   :group 'clasker)
@@ -127,113 +111,16 @@
     :initform ()
     :type list)))
 
-;;; This variable keeps a weak hash table which associates ticket identifiers as
-;;; (FILENAME lineno) with the ticket objects itself. It is useful to reload
-;;; tickets from disks preserving the eq-identity.
-(defvar clasker-ticket-table
-  (make-hash-table :test 'equal :weakness 'value))
+(defmethod initialize-instance :after ((ticket clasker-ticket) _slots)
+  (unless (eq (class-of ticket) 'clasker-ticket)
+    (clasker-ticket-set-class ticket (class-of ticket))))
 
-;;; Contribs that add new subclasses of clasker-ticket should put the class name
-;;; in this list. We use it to make sure we only load tickets we can load
-(defvar clasker-allowed-ticket-classes '(clasker-ticket) "Allowed classes")
-
-(defun clasker-ticket-id (ticket)
-  (list (oref ticket filename) (oref ticket line)))
-
-(defun clasker-intern-ticket (id &optional class)
-  (or (gethash id clasker-ticket-table)
-      (puthash id (make-instance (or (car (member class clasker-allowed-ticket-classes))
-                                     (error "unknown-clasker-ticket-class")))
-               clasker-ticket-table)))
-
-;;; Load an individual ticket given by the identifier ID. It could modify
-;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
-(defun clasker-load-id (id)
-  (let* ((filename (or (car id) clasker-file))
-        (lineno (cadr id))
-        (id `(,(expand-file-name filename) ,lineno)))
-    (when (file-readable-p filename)
-      (with-temp-buffer
-        (insert-file-contents filename)
-        (goto-char (point-min))
-        (forward-line (1- lineno))
-        (ignore-errors
-          (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
-                 (raw-props (read-from-whole-string line))
-                 (props (mapcar (lambda (prop)
-                                  (cons (car prop)
-                                        (if (stringp (cdr prop))
-                                            (clasker--unquote-string (cdr prop))
-                                          (cdr prop))))
-                                raw-props))
-                 (class (cdr (assq 'class props)))
-                 (ticket (clasker-intern-ticket id class)))
-            (oset ticket properties props)
-            (oset ticket filename filename)
-            (oset ticket line (line-number-at-pos))
-;            (clasker-ticket-set-property ticket 'class class)
-            ticket))))))
-
-;;; Resolve a ticket identifier. It is like `clasker-load-id', but it tries not
-;;; to load the ticket from disk if it has been loaded already, so it does not
-;;; modify ticket objects.
-(defun clasker-resolve-id (id)
-  (let ((full-id
-         (if (integerp id)
-             `(,(expand-file-name clasker-file) ,id)
-           id)))
-    (or (gethash full-id clasker-ticket-table)
-        (clasker-load-id full-id))))
-
-(defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
-  (object-add-to-list ticket 'properties (cons property value)))
-
-(defmethod initialize-instance :after ((ticket clasker-ticket) slots)
-  (message (format "%s" (class-of ticket)))
-  (clasker-ticket-set-class ticket (class-of ticket))
-;  (when (next-method-p) (call-next-method))
-  )
-
-(defmethod clasker-ticket-get-property ((ticket clasker-ticket) property-name &optional no-recursive)
-  (let ((direct-entry (assq property-name (slot-value ticket 'properties))))
-    (if direct-entry
-        (cdr direct-entry)
-      (unless no-recursive
-        (let ((classes (clasker-ticket-classes ticket))
-              (prop nil))
-          (while (and classes (not prop))
-            (setq prop (get (first classes) property-name))
-            (setq classes (rest classes)))
-          prop)))))
-
-(defmethod clasker-ticket-set-property ((ticket clasker-ticket) property value)
-  (if (assoc property (slot-value ticket 'properties))
-      (setcdr (assoc property (slot-value ticket 'properties)) value)
-    (clasker-ticket--add-property ticket property value)))
-
-(defmethod clasker-ticket-set-class ((ticket clasker-ticket)  value)
-  (clasker-ticket-set-property ticket 'class value))
-
-(defmethod clasker-ticket-delete-property ((ticket clasker-ticket) property)
-  (let ((property-list (slot-value ticket 'properties)))
-    (when (assoc property property-list)
-      (oset ticket properties (assq-delete-all property (slot-value ticket 'properties))))))
-
-(defmethod clasker-ticket-get-property-in-hierarchy ((ticket clasker-ticket) property)
-   (let ((ticket-property (clasker-ticket-get-property ticket property)))
-     (or ticket-property
-         (when (clasker-ticket-parent ticket)
-           (clasker-ticket-get-property-in-hierarchy
-            (clasker-ticket-parent ticket)
-            property)))))
-
-(defun clasker-ticket-ancestor-p (ancestor child)
-  (let ((ancestor-id (oref ancestor line)))
-    (or
-     (equal ancestor-id (oref child line))
-     (if (clasker-ticket-parent child)
-         (clasker-ticket-ancestor-p ancestor (clasker-ticket-parent child))
-       nil))))
+(defun clasker-subclass-p (class1 class2)
+  "Return T if the symbol CLASS1 designates a subclass of the
+class whose name is CLASS2. Otherwise return NIL."
+  (and (class-p class1)
+       (class-p class2)
+       (child-of-class-p class1 class2)))
 
 (defun clasker--quote-string (string)
   (replace-regexp-in-string "\n" "\\\\n"
@@ -254,70 +141,215 @@
          (forward-char))))
     (buffer-string)))
 
+
+;;; This variable keeps a weak hash table which associates ticket identifiers as
+;;; (FILENAME lineno) with the ticket objects itself. It is useful to reload
+;;; tickets from disks preserving the eq-identity.
+(defvar clasker-ticket-table
+  (make-hash-table :test 'equal :weakness 'value))
+
+(defun clasker-ticket-id (ticket)
+  (list (oref ticket filename) (oref ticket line)))
+
+(defun clasker-intern-ticket (id &optional class)
+  (setq class (or class 'clasker-ticket))
+  (unless (clasker-subclass-p class 'clasker-ticket)
+    (error "unknown-clasker-ticket-class"))
+  (or (gethash id clasker-ticket-table)
+      (puthash id (make-instance class) clasker-ticket-table)))
+
+
+(defun clasker--parse-ticket-line (&optional id)
+  (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
+         (props (ignore-errors (read-from-whole-string (clasker--unquote-string line))))
+         (class (or (cdr (assq 'class props)) 'clasker-ticket))
+         (ticket (if id (clasker-intern-ticket id class) (make-instance class))))
+    (oset ticket filename (car id))
+    (oset ticket line (cadr id))
+    (dolist (prop props)
+      (clasker-ticket-set-property ticket (car prop) (cdr prop)))
+    ticket))
+
+;;; Load an individual ticket given by the identifier ID. It could modify
+;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
+(defun clasker-load-id (id)
+  (let* ((filename (or (car id) clasker-ticket-file))
+        (lineno (cadr id))
+        (id `(,(expand-file-name filename) ,lineno)))
+    (when (file-readable-p filename)
+      (with-temp-buffer
+        (insert-file-contents-literally filename)
+        (goto-char (point-min))
+        (forward-line (1- lineno))
+        (clasker--parse-ticket-line id)))))
+
+;;; Resolve a ticket identifier. It is like `clasker-load-id', but it tries not
+;;; to load the ticket from disk if it has been loaded already, so it does not
+;;; modify ticket objects.
+(defun clasker-resolve-id (id)
+  (let ((full-id
+         (if (integerp id)
+             `(,(expand-file-name clasker-ticket-file) ,id)
+           id)))
+    (or (gethash full-id clasker-ticket-table)
+        (clasker-load-id full-id))))
+
+
+;;;; Properties
+
+(defvar clasker-inhibit-property-hook nil)
+(defvar clasker-property-hook-table
+  (make-hash-table :test #'eq))
+
+(put 'childs 'clasker-volatile t)
+
+(defun clasker-add-property-hook (property function)
+  (pushnew function (gethash property clasker-property-hook-table)))
+
+(defun clasker-run-property-hook (ticket property new-value)
+  (unless clasker-inhibit-property-hook
+    (dolist (hook (gethash property clasker-property-hook-table))
+      (funcall hook ticket property new-value))))
+
+(defmethod clasker-ticket--add-property ((ticket clasker-ticket) property value)
+  (object-add-to-list ticket 'properties (cons property value)))
+
+(defmethod clasker-ticket--get-property ((ticket clasker-ticket) property-name)
+  (let ((entry (assq property-name (slot-value ticket 'properties))))
+    (and entry (cons ticket (cdr entry)))))
+
+(defmethod clasker-ticket--set-property ((ticket clasker-ticket) property value)
+  (let ((entry (clasker-ticket--get-property ticket property)))
+    (if entry (setcdr entry value)
+      (clasker-ticket--add-property ticket property value))))
+
+(defmethod clasker-ticket--delete-property ((ticket clasker-ticket) property)
+  (let ((property-list (slot-value ticket 'properties)))
+    (oset ticket properties (assq-delete-all property property-list))))
+
+(defun clasker-ticket--get-property-1 (ticket property &optional no-classes)
+  (or (clasker-ticket--get-property ticket property)
+      (unless no-classes
+        (let ((classes (clasker-ticket-classes ticket))
+              (value nil))
+          (while (and classes (not value))
+            (setq value (get (car classes) property))
+            (setq classes (rest classes)))
+          (cons ticket value)))))
+
+(defmethod clasker-ticket-get-property ((ticket clasker-ticket) property &optional parents no-classes)
+  (setq parents (or parents 0))
+  (let (value)
+    (block nil
+      (while t
+        (setq value (clasker-ticket--get-property-1 ticket property no-classes))
+        (if value (return)
+          (if (eql parents 0) (return)
+            (when (numberp parents) (decf parents))
+            (setf ticket (clasker-ticket-parent ticket))))))
+    (cdr value)))
+
+(defmethod clasker-ticket-set-property ((ticket clasker-ticket) property value)
+  (clasker-run-property-hook ticket property value)
+  (clasker-ticket--set-property ticket property value))
+
+(defmethod clasker-ticket-delete-property ((ticket clasker-ticket) property)
+  (clasker-run-property-hook ticket property nil)
+  (clasker-ticket--delete-property ticket property))
+
+
+(defun clasker-ticket-ancestor-p (ancestor child)
+  (while (and child (not (eq ancestor child)))
+    (setq child (clasker-ticket-parent child)))
+  (eq ancestor child))
+
 (defmethod clasker-save-ticket ((ticket clasker-ticket))
   (let ((line (oref ticket line)))
-    (with-temp-file clasker-file
-      (insert-file-contents-literally clasker-file)
+    (with-temp-file clasker-ticket-file
+      (when (file-readable-p clasker-ticket-file)
+        (insert-file-contents-literally clasker-ticket-file))
       (if (not line)
           (goto-char (point-max))
         (goto-char (point-min))
         (forward-line (1- line))
         (delete-region (line-beginning-position) (line-end-position)))
-      (oset ticket filename clasker-file)
+      (oset ticket filename clasker-ticket-file)
       (oset ticket line (line-number-at-pos))
-      (let ((standard-output (current-buffer)))
-        (insert "(")
-        (dolist (property (oref ticket properties))
-          (let ((key (symbol-name (car property)))
-                (value (typecase (cdr property)
-                         (string (prin1-to-string (clasker--quote-string (cdr property))))
-                         (t (prin1-to-string (cdr property))))))
-            (insert "(" key " . " value ")")))
-        (insert ")")
+      (let ((properties (oref ticket properties)))
+        (insert
+         (clasker--quote-string
+          (with-output-to-string
+            (princ "(")
+            (dolist (prop properties)
+              (unless (get (car prop) 'clasker-volatile)
+                (prin1 prop)))
+            (princ ")"))))
         (unless line (insert "\n"))))))
 
 
+(defmacro clasker-with-collect (&rest body)
+  (declare (indent defun) (debug t))
+  (let ((head (gensym))
+        (tail (gensym)))
+    `(let* ((,head (list 'collect))
+            (,tail ,head))
+       (flet ((collect (x)
+                (setf (cdr ,tail) (cons x nil))
+                (setf ,tail (cdr ,tail))))
+         ,@body)
+       (cdr ,head))))
+
+
 (defun clasker-load-tickets (&optional filename)
-  (let ((filename (or filename clasker-file)))
+  (let ((filename (expand-file-name (or filename clasker-ticket-file))))
     (when (file-readable-p filename)
       (with-temp-buffer
         (insert-file-contents filename)
         (goto-char (point-min))
-        (let ((tickets nil))
+        (clasker-with-collect
           (while (< (point) (point-max))
-            (ignore-errors
-              (let* ((line (buffer-substring (line-beginning-position)
-                                             (line-end-position)))
-                     (raw-props (read-from-whole-string line))
-                     (props (mapcar (lambda (prop)
-                                      (cons (car prop)
-                                            (if (stringp (cdr prop))
-                                                (clasker--unquote-string (cdr prop))
-                                              (cdr prop))))
-                                    raw-props))
-                     (class (cdr (assq 'class props)))
-                     (ticket (clasker-intern-ticket (list filename
-                                                          (line-number-at-pos))
-                                                    class)))
-                (oset ticket properties props)
-                (oset ticket filename filename)
-                (oset ticket line (line-number-at-pos))
-                (push ticket tickets)))
-            (forward-line))
-          (nreverse tickets))))))
+            (collect (clasker--parse-ticket-line `(,filename ,(line-number-at-pos))))
+            (forward-line)))))))
 
 
 ;;; Ticket accessors
 
+(defun clasker-ticket-parent (ticket)
+  (let ((refer (clasker-ticket-get-property ticket 'parent nil t)))
+    (when refer (clasker-resolve-id refer))))
+
+(defun clasker-update-childs (ticket _property new-value)
+  ;; (let ((clasker-inhibit-property-hook t))
+  ;;   (let ((oldparent (clasker-ticket-parent ticket))
+  ;;         (newparent (clasker-resolve-id new-value)))
+  ;;     (when oldparent
+  ;;       (let ((siblings (remove ticket (clasker-ticket-childs oldparent))))
+  ;;         (clasker-ticket-set-property oldparent 'childs (mapcar 'clasker-ticket-id siblings))))
+  ;;     (when newparent
+  ;;       (let ((siblings (cons ticket (clasker-ticket-childs newparent))))
+  ;;         (clasker-ticket-set-property newparent 'childs (mapcar 'clasker-ticket-id siblings))))))
+  )
+(clasker-add-property-hook 'parent 'clasker-update-childs)
+
+
+(defun clasker-ticket-childs (ticket)
+  (let ((refers (clasker-ticket-get-property ticket 'childs nil t)))
+    (when refers (mapcar 'clasker-resolve-id refers))))
+
+
+(defmethod clasker-ticket-class ((ticket clasker-ticket) value)
+  (or (clasker-ticket-get-property ticket 'class value nil t) 'clasker-ticket))
+
+(defmethod clasker-ticket-set-class ((ticket clasker-ticket) value)
+  (if (eq value 'clasker-ticket)
+      (clasker-ticket-delete-property ticket 'class)
+    (clasker-ticket-set-property ticket 'class value)))
+
 (defun clasker-ticket-classes (ticket)
-  (clasker-ticket-get-property ticket 'classes t))
+  (clasker-ticket-get-property ticket 'classes nil t))
 
 (defun clasker-ticket-description (ticket)
   (clasker-ticket-get-property ticket 'description))
-
-(defun clasker-ticket-parent (ticket)
-  (let ((refer (clasker-ticket-get-property ticket 'parent t)))
-    (when refer (clasker-resolve-id refer))))
 
 (defun clasker-ticket-timestamp (ticket)
   (clasker-ticket-get-property ticket 'timestamp))
@@ -330,20 +362,43 @@
     (and timestamp (float-time (time-subtract (current-time) timestamp)))))
 
 
-;;; Ticket and text
+;;; Operations on text of tickets
 
 (defsubst clasker-ticket-at-point ()
   (get-text-property (point) 'clasker-ticket))
 
+(defun clasker-beginning-of-ticket ()
+  (interactive)
+  (goto-char (or (previous-single-property-change (1+ (point)) 'clasker-ticket)
+                 (point-min))))
 
-
-;;;; Sources and Backends
+(defun clasker-end-of-ticket ()
+  (interactive)
+  (let ((end  (next-single-property-change (point) 'clasker-ticket)))
+    (goto-char (1- (or end (point-max))))))
 
-(defclass clasker-source ()
-  nil)
+(defun clasker--following-single-ticket (movement-func)
+  (let ((ticket (clasker-ticket-at-point))
+        (point (point)))
+    (setq next-ticket-pos (funcall movement-func  point 'clasker-ticket))
+    (while (and next-ticket-pos
+                (or (not (get-text-property next-ticket-pos 'clasker-ticket))
+                    (equal next-ticket-pos ticket)))
+      (setq next-ticket-pos (funcall movement-func next-ticket-pos 'clasker-ticket)))
+    (goto-char (if next-ticket-pos next-ticket-pos point))))
 
-(defgeneric clasker-source-fetch-tickets (source))
-(defgeneric clasker-source-push-ticket (source ticket))
+(defun clasker-next-ticket (&optional arg)
+  (interactive "p")
+  (setq arg (or arg 1))
+  (dotimes (_i arg)
+    (clasker--following-single-ticket 'next-single-property-change)))
+
+(defun clasker-previous-ticket (&optional arg)
+  (interactive "p")
+  (setq arg (or arg 1))
+  (dotimes (_i arg)
+    (clasker--following-single-ticket 'previous-single-property-change)))
+
 
 ;;;; Actions
 
@@ -401,25 +456,6 @@
                  (cdr item) abbrevs)))
     abbrevs))
 
-(defmacro clasker-with-new-window (buffer-name height &rest body)
-  (declare (indent 1))
-  (let ((window (make-symbol "window"))
-        (buffer (make-symbol "buffer")))
-    `(save-excursion
-       (let ((,window (split-window-vertically (- (window-height) ,height)))
-             (,buffer (generate-new-buffer ,buffer-name)))
-         (select-window ,window)
-         (switch-to-buffer ,buffer t)
-         (erase-buffer)
-         ,@body))))
-
-(defvar current-ticket)
-(defun clasker-action-edit (ticket)
-  (clasker-with-new-window "*Clasker Edit*" 10
-    (clasker-edit-mode)
-    (set (make-local-variable 'current-ticket) ticket)
-    (insert (clasker-ticket-description ticket))))
-
 (defun clasker-action-archive (ticket)
   (clasker-ticket-set-property ticket 'archived t)
   (clasker-ticket-set-property ticket 'archive-timestamp (butlast (current-time)))
@@ -441,7 +477,7 @@ list of tickets to be shown in the current view.")
      ((and (not (clasker-ticket-archived-p t1)) (not (clasker-ticket-archived-p t2)))
       (let ((ts1 (clasker-ticket-get-property t2 'timestamp))
             (ts2 (clasker-ticket-get-property t1 'timestamp)))
-        (if (equal ts1 ts2)
+        (if (or (null ts1) (null ts2) (equal ts1 ts2))
             (> (oref t2 uid) (oref t1 uid))
           (time-less-p ts2 ts1))))
      ;; Reverse order for archived tickets
@@ -450,7 +486,7 @@ list of tickets to be shown in the current view.")
                (clasker-ticket-get-property t2 'archive-timestamp))
           (let ((ts1 (clasker-ticket-get-property t1 'archive-timestamp))
                 (ts2 (clasker-ticket-get-property t2 'archive-timestamp)))
-            (if (equal ts1 ts2)
+            (if (or (null ts1) (null ts2) (equal ts1 ts2))
                 (> (oref t2 uid) (oref t1 uid))
               (time-less-p ts2 ts1)))))
      (t
@@ -468,14 +504,12 @@ list of tickets to be shown in the current view.")
       (clasker-ticket< t1 t2)))))
 
 (defun clasker-default-view ()
-  (sort (clasker-filter-tickets (clasker-load-tickets))
-        'clasker-ticket<))
+  (sort (clasker-filter-tickets (clasker-load-tickets)) 'clasker-ticket<))
 
 (defun clasker-current-view ()
   (funcall clasker-view-function))
 
-
-;;; Filtering
+;;; Filters
 
 (defvar clasker-default-filters nil
   "list of default filters to apply")
@@ -501,13 +535,10 @@ list of tickets to be shown in the current view.")
         (return t)))))
 
 (defun clasker-filter-tickets (ticket-list)
-  (let* ((list (list 'list-of-tickets))
-         (tail (last list)))
+  (clasker-with-collect 
     (dolist (ticket ticket-list)
       (unless (clasker-ticket-filtered ticket clasker-active-filters)
-        (setf (cdr tail) (list ticket))
-        (setf tail (cdr tail))))
-    (rest list)))
+        (collect ticket)))))
 
 (defun clasker-filter-only ()
   (interactive)
@@ -536,11 +567,13 @@ list of tickets to be shown in the current view.")
           (goto-char beginning)
           (block nil
             (while (< (point) end)
-              (push (clasker-ticket-at-point) tickets)
+              (when (clasker-ticket-at-point)
+                (push (clasker-ticket-at-point) tickets))
               (or (clasker-next-ticket) (return))))))
       tickets))
    (t
-    (list (clasker-ticket-at-point)))))
+    (and (clasker-ticket-at-point)
+         (list (clasker-ticket-at-point))))))
 
 
 (defun clasker-format-seconds (seconds)
@@ -562,9 +595,9 @@ list of tickets to be shown in the current view.")
             while (zerop value1)
             finally
             (progn
-              (princ (format "%d%s" value1 name1))
+              (princ (format "%2d%s" value1 name1))
               (unless (or (null value2) (zerop value2))
-                (princ (format " %d%s" value2 name2))))))))
+                (princ (format " %02d%s" value2 name2))))))))
 
 (defmethod clasker-ticket-headline ((ticket clasker-ticket))
   (let* ((lines (split-string (clasker-ticket-description ticket) "\n"))
@@ -625,7 +658,6 @@ list of tickets to be shown in the current view.")
           (setf ticket (make-instance 'clasker-ticket))
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
-;          (clasker-ticket-set-property ticket 'class 'clasker-ticket)
           (clasker-save-ticket ticket)
           (clasker-revert))))))
 
@@ -644,21 +676,9 @@ list of tickets to be shown in the current view.")
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
           (clasker-ticket-set-property ticket 'parent parent-id)
-;          (clasker-ticket-set-property ticket 'class 'clasker-ticket)
           (clasker-save-ticket ticket)
           (clasker-revert))))))
 
-
-(defun clasker-beginning-of-ticket ()
-  (interactive)
-  (goto-char (or (previous-single-property-change (1+ (point)) 'clasker-ticket)
-       (point-min))))
-
-(defun clasker-end-of-ticket ()
-  (interactive)
-  (let ((end  (next-single-property-change (point) 'clasker-ticket)))
-    (goto-char  (1- (or end
-                     (point-max))))))
 
 (defun clasker-mark-ticket-pos ()
   (interactive)
@@ -666,27 +686,6 @@ list of tickets to be shown in the current view.")
     (push-mark (clasker-beginning-of-ticket) t nil)
     (goto-char end)))
 
-(defun clasker-next-ticket (&optional arg)
-  (interactive "p")
-  (setq arg (or arg 1))
-  (dotimes (_i arg)
-    (clasker--following-single-ticket 'next-single-property-change)))
-
-(defun clasker-previous-ticket (&optional arg)
-  (interactive "p")
-  (setq arg (or arg 1))
-  (dotimes (_i arg)
-    (clasker--following-single-ticket 'previous-single-property-change)))
-
-(defun clasker--following-single-ticket (movement-func)
-  (let ((ticket (clasker-ticket-at-point))
-        (point (point)))
-    (setq next-ticket-pos (funcall movement-func  point 'clasker-ticket))
-    (while (and next-ticket-pos
-                (or (not (get-text-property next-ticket-pos 'clasker-ticket))
-                    (equal next-ticket-pos ticket)))
-      (setq next-ticket-pos (funcall movement-func next-ticket-pos 'clasker-ticket)))
-    (goto-char (if next-ticket-pos next-ticket-pos point))))
 
 (defun clasker-mark-ticket (arg)
   ;; TODO: Fix to work with negative arguments.
@@ -713,16 +712,14 @@ list of tickets to be shown in the current view.")
 
 (defun clasker-do ()
   (interactive)
-  (let ((clasker-inhibit-confirm t)
-        (action (clasker-read-action clasker-default-actions)))
-    (when action
-      (dolist (ticket (clasker-active-tickets))
-        (funcall action ticket))))
-  (clasker-revert))
-
-(defun clasker-open-file (arg)
-  (interactive "fOpen Clasker file: ")
-  (setf clasker-file arg)
+  (let* ((clasker-inhibit-confirm t)
+         (tickets (clasker-active-tickets))
+         (actions clasker-default-actions))
+    (when (and actions tickets)
+      (let ((action (clasker-read-action actions)))
+        (when action
+          (dolist (ticket tickets)
+            (funcall action ticket))))))
   (clasker-revert))
 
 (defvar clasker-mode-map
@@ -735,7 +732,6 @@ list of tickets to be shown in the current view.")
     (define-key map (kbd "m") 'clasker-mark-ticket)
     (define-key map (kbd "u") 'clasker-unmark-ticket)
     (define-key map (kbd "p") 'clasker-previous-ticket)
-    (define-key map (kbd "C-c C-f") 'clasker-open-file)
     (define-key map (kbd "o") 'clasker-filter-only)
     (define-key map (kbd "^") 'clasker-remove-filters)
     (define-key map (kbd "RET") 'clasker-do)
@@ -759,6 +755,51 @@ list of tickets to be shown in the current view.")
   (switch-to-buffer "*Clasker*")
   (clasker-mode)
   (clasker-revert))
+
+
+
+(defvar current-ticket)
+
+(defmacro clasker-with-new-window (buffer-name height &rest body)
+  (declare (indent 1))
+  (let ((window (make-symbol "window"))
+        (buffer (make-symbol "buffer")))
+    `(save-excursion
+       (let ((,window (split-window-vertically (- (window-height) ,height)))
+             (,buffer (generate-new-buffer ,buffer-name)))
+         (select-window ,window)
+         (switch-to-buffer ,buffer t)
+         (erase-buffer)
+         ,@body))))
+
+(defun clasker-action-edit (ticket)
+  (clasker-with-new-window "*Clasker Edit*" 10
+    (clasker-edit-mode)
+    (set (make-local-variable 'current-ticket) ticket)
+    (insert (clasker-ticket-description ticket))))
+
+(defun clasker-edit-save-ticket ()
+  (interactive)
+  (clasker-ticket-set-property current-ticket 'description (buffer-string))
+  (clasker-save-ticket current-ticket)
+  (clasker-edit-quit))
+
+(defun clasker-edit-quit ()
+  (interactive)
+  (kill-buffer)
+  (delete-window)
+  (clasker-revert))
+
+(defvar clasker-edit-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-c") 'clasker-edit-save-ticket)
+    (define-key map (kbd "C-c C-k") 'clasker-edit-quit)
+    map)
+  "docstring")
+
+(define-derived-mode clasker-edit-mode text-mode "Clasker Edit"
+  "docstring")
+
 
 (provide 'clasker)
 
