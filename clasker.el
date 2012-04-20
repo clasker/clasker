@@ -367,8 +367,8 @@ class whose name is CLASS2. Otherwise return NIL."
 
 (defun clasker-beginning-of-ticket ()
   (interactive)
-  (goto-char (or (previous-single-property-change (1+ (point)) 'clasker-ticket)
-                 (point-min))))
+  (let ((begin (previous-single-property-change (1+ (point)) 'clasker-ticket)))
+    (goto-char (or begin (point-min)))))
 
 (defun clasker-end-of-ticket ()
   (interactive)
