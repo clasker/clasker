@@ -361,6 +361,7 @@ class whose name is CLASS2. Otherwise return NIL."
     (and timestamp (float-time (time-subtract (current-time) timestamp)))))
 
 
+
 ;;; Operations on text of tickets
 
 (defsubst clasker-ticket-at-point ()
@@ -509,7 +510,7 @@ list of tickets to be shown in the current view.")
   (remove-if #'clasker-filtered-ticket-p ticket-list))
 
 (defvar clasker-filter-expire 300
-  "Seconds to mark a archived ticket as expired.")
+  "Number of seconds after an archived ticket become expired.")
 
 (defun clasker-expired-ticket-p (ticket)
   (and (clasker-ticket-archived-p ticket)
