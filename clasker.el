@@ -318,16 +318,15 @@ class whose name is CLASS2. Otherwise return NIL."
     (when refer (clasker-resolve-id refer))))
 
 (defun clasker-update-childs (ticket _property new-value)
-  ;; (let ((clasker-inhibit-property-hook t))
-  ;;   (let ((oldparent (clasker-ticket-parent ticket))
-  ;;         (newparent (clasker-resolve-id new-value)))
-  ;;     (when oldparent
-  ;;       (let ((siblings (remove ticket (clasker-ticket-childs oldparent))))
-  ;;         (clasker-ticket-set-property oldparent 'childs (mapcar 'clasker-ticket-id siblings))))
-  ;;     (when newparent
-  ;;       (let ((siblings (cons ticket (clasker-ticket-childs newparent))))
-  ;;         (clasker-ticket-set-property newparent 'childs (mapcar 'clasker-ticket-id siblings))))))
-  )
+  (let ((clasker-inhibit-property-hook t))
+    (let ((oldparent (clasker-ticket-parent ticket))
+          (newparent (clasker-resolve-id new-value)))
+      (when oldparent
+        (let ((siblings (remove ticket (clasker-ticket-childs oldparent))))
+          (clasker-ticket-set-property oldparent 'childs (mapcar 'clasker-ticket-id siblings))))
+      (when newparent
+        (let ((siblings (cons ticket (clasker-ticket-childs newparent))))
+          (clasker-ticket-set-property newparent 'childs (mapcar 'clasker-ticket-id siblings)))))))
 (clasker-add-property-hook 'parent 'clasker-update-childs)
 
 
