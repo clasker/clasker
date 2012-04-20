@@ -215,8 +215,7 @@ class whose name is CLASS2. Otherwise return NIL."
   (object-add-to-list ticket 'properties (cons property value)))
 
 (defmethod clasker-ticket--get-property ((ticket clasker-ticket) property-name)
-  (let ((entry (assq property-name (slot-value ticket 'properties))))
-    (and entry (cons ticket (cdr entry)))))
+  (assq property-name (slot-value ticket 'properties)))
 
 (defmethod clasker-ticket--set-property ((ticket clasker-ticket) property value)
   (let ((entry (clasker-ticket--get-property ticket property)))
@@ -235,7 +234,7 @@ class whose name is CLASS2. Otherwise return NIL."
           (while (and classes (not value))
             (setq value (get (car classes) property))
             (setq classes (rest classes)))
-          (cons ticket value)))))
+          (cons property value)))))
 
 (defmethod clasker-ticket-get-property ((ticket clasker-ticket) property &optional parents no-classes)
   (setq parents (or parents 0))
