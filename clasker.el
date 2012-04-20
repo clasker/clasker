@@ -63,12 +63,10 @@
 ;;;
 
 (eval-when-compile
-  (require 'cl))
-
-(eval-when-compile
   (unless (<= 24 emacs-major-version)
     (error "You need at least Emacs 24 to use Clasker.")))
 
+(require 'cl)
 (require 'eieio)
 
 (defgroup clasker nil
@@ -355,6 +353,9 @@ class whose name is CLASS2. Otherwise return NIL."
 (defun clasker-ticket-archived-p (ticket)
   (clasker-ticket-get-property ticket 'archived))
 
+(defun clasker-ticket-archived-since (ticket)
+  (clasker-ticket-get-property ticket 'archive-timestamp))
+
 (defun clasker-ticket-ago (ticket)
   (let ((timestamp (clasker-ticket-timestamp ticket)))
     (and timestamp (float-time (time-subtract (current-time) timestamp)))))
@@ -495,47 +496,27 @@ list of tickets to be shown in the current view.")
 (defun clasker-current-view ()
   (funcall clasker-view-function))
 
+
 ;;; Filters
 
-(defvar clasker-default-filters nil
-  "list of default filters to apply")
-(defvar clasker-active-filters clasker-default-filters
-  "list of current active filters to apply")
+(defvar clasker-filter-functions nil)
 
-(defun clasker-filter-add-filter (callable-filter &optional filter-list)
-  (interactive "afilter:")
-  (let ((l (or filter-list 'clasker-active-filters)))
-    (add-to-list l callable-filter)
-    (clasker-revert)))
-
-(defun clasker-filter-add-filter-lisp (callable-filter &optional filter-list)
-  (interactive "Xlisp code to add:")
-  (let ((l (or filter-list 'clasker-active-filters)))
-    (add-to-list l callable-filter)
-    (clasker-revert)))
-
-(defun clasker-ticket-filtered (ticket filters)
-  (block nil
-    (dolist (f filters nil)
-      (unless (funcall f ticket)
-        (return t)))))
+(defun clasker-filtered-ticket-p (ticket)
+  (every (lambda (f) (funcall f ticket))
+         clasker-filter-functions))
 
 (defun clasker-filter-tickets (ticket-list)
-  (clasker-with-collect 
-    (dolist (ticket ticket-list)
-      (unless (clasker-ticket-filtered ticket clasker-active-filters)
-        (collect ticket)))))
+  (remove-if #'clasker-filtered-ticket-p ticket-list))
 
-(defun clasker-filter-only ()
-  (interactive)
-  (let ((ticket (clasker-ticket-at-point)))
-    (clasker-filter-add-filter (lambda (x) (clasker-ticket-ancestor-p ticket x)))))
+(defvar clasker-filter-expire 300
+  "Seconds to mark a archived ticket as expired.")
 
-(defun clasker-remove-filters ()
-  (interactive)
-  (setq clasker-active-filters clasker-default-filters)
-  (clasker-revert))
-
+(defun clasker-expired-ticket-p (ticket)
+  (and (clasker-ticket-archived-p ticket)
+       (clasker-ticket-get-property ticket 'archive-timestamp)
+       (> (float-time (time-subtract (current-time) (clasker-ticket-archived-since ticket)))
+          clasker-filter-expire)))
+(pushnew 'clasker-expired-ticket-p clasker-filter-functions)
 
 ;;;; User commands and interface
 
