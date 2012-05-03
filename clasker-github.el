@@ -48,7 +48,7 @@
 (require 'gh-auth)
 
 (defclass clasker-github-ticket (clasker-ticket) () "foo")
-(add-to-list 'clasker-allowed-ticket-classes 'clasker-github-ticket)
+;(add-to-list 'clasker-allowed-ticket-classes 'clasker-github-ticket)
 
 ;; (defmethod initialize-instance ((ticket clasker-github-ticket))
 ;;   (call-next-method))
