@@ -63,12 +63,10 @@
 ;;;
 
 (eval-when-compile
-  (require 'cl))
-
-(eval-when-compile
   (unless (<= 24 emacs-major-version)
     (error "You need at least Emacs 24 to use Clasker.")))
 
+(require 'cl)
 (require 'eieio)
 
 (defgroup clasker nil
@@ -215,8 +213,7 @@ class whose name is CLASS2. Otherwise return NIL."
   (object-add-to-list ticket 'properties (cons property value)))
 
 (defmethod clasker-ticket--get-property ((ticket clasker-ticket) property-name)
-  (let ((entry (assq property-name (slot-value ticket 'properties))))
-    (and entry (cons ticket (cdr entry)))))
+  (assq property-name (slot-value ticket 'properties)))
 
 (defmethod clasker-ticket--set-property ((ticket clasker-ticket) property value)
   (let ((entry (clasker-ticket--get-property ticket property)))
@@ -235,7 +232,7 @@ class whose name is CLASS2. Otherwise return NIL."
           (while (and classes (not value))
             (setq value (get (car classes) property))
             (setq classes (rest classes)))
-          (cons ticket value)))))
+          (cons property value)))))
 
 (defmethod clasker-ticket-get-property ((ticket clasker-ticket) property &optional parents no-classes)
   (setq parents (or parents 0))
@@ -319,16 +316,15 @@ class whose name is CLASS2. Otherwise return NIL."
     (when refer (clasker-resolve-id refer))))
 
 (defun clasker-update-childs (ticket _property new-value)
-  ;; (let ((clasker-inhibit-property-hook t))
-  ;;   (let ((oldparent (clasker-ticket-parent ticket))
-  ;;         (newparent (clasker-resolve-id new-value)))
-  ;;     (when oldparent
-  ;;       (let ((siblings (remove ticket (clasker-ticket-childs oldparent))))
-  ;;         (clasker-ticket-set-property oldparent 'childs (mapcar 'clasker-ticket-id siblings))))
-  ;;     (when newparent
-  ;;       (let ((siblings (cons ticket (clasker-ticket-childs newparent))))
-  ;;         (clasker-ticket-set-property newparent 'childs (mapcar 'clasker-ticket-id siblings))))))
-  )
+  (let ((clasker-inhibit-property-hook t))
+    (let ((oldparent (clasker-ticket-parent ticket))
+          (newparent (clasker-resolve-id new-value)))
+      (when oldparent
+        (let ((siblings (remove ticket (clasker-ticket-childs oldparent))))
+          (clasker-ticket-set-property oldparent 'childs (mapcar 'clasker-ticket-id siblings))))
+      (when newparent
+        (let ((siblings (cons ticket (clasker-ticket-childs newparent))))
+          (clasker-ticket-set-property newparent 'childs (mapcar 'clasker-ticket-id siblings)))))))
 (clasker-add-property-hook 'parent 'clasker-update-childs)
 
 
@@ -357,6 +353,9 @@ class whose name is CLASS2. Otherwise return NIL."
 (defun clasker-ticket-archived-p (ticket)
   (clasker-ticket-get-property ticket 'archived))
 
+(defun clasker-ticket-archived-since (ticket)
+  (clasker-ticket-get-property ticket 'archive-timestamp))
+
 (defun clasker-ticket-ago (ticket)
   (let ((timestamp (clasker-ticket-timestamp ticket)))
     (and timestamp (float-time (time-subtract (current-time) timestamp)))))
@@ -369,8 +368,8 @@ class whose name is CLASS2. Otherwise return NIL."
 
 (defun clasker-beginning-of-ticket ()
   (interactive)
-  (goto-char (or (previous-single-property-change (1+ (point)) 'clasker-ticket)
-                 (point-min))))
+  (let ((begin (previous-single-property-change (1+ (point)) 'clasker-ticket)))
+    (goto-char (or begin (point-min)))))
 
 (defun clasker-end-of-ticket ()
   (interactive)
@@ -443,6 +442,18 @@ class whose name is CLASS2. Otherwise return NIL."
       (delete-window window)
       value)))
 
+(defun clasker-shortcuts (l)
+  (let ((abbrevs (make-hash-table :test 'equal)))
+    (dolist (item l)
+      (let ((count 0))
+        (while (and (gethash (substring (car item) count  (+ count 1)) abbrevs)
+                    (gethash (capitalize (substring (car item) count  (+ count 1))) abbrevs))
+          (incf count))
+        (puthash (funcall (if (gethash (substring (car item) count  (+ count 1)) abbrevs)
+                              #'capitalize (lambda (x) x))
+                          (substring (car item) count (+ count 1)))
+                 (cdr item) abbrevs)))
+    abbrevs))
 
 (defun clasker-action-archive (ticket)
   (clasker-ticket-set-property ticket 'archived t)
@@ -497,47 +508,27 @@ list of tickets to be shown in the current view.")
 (defun clasker-current-view ()
   (funcall clasker-view-function))
 
+
 ;;; Filters
 
-(defvar clasker-default-filters nil
-  "list of default filters to apply")
-(defvar clasker-active-filters clasker-default-filters
-  "list of current active filters to apply")
+(defvar clasker-filter-functions nil)
 
-(defun clasker-filter-add-filter (callable-filter &optional filter-list)
-  (interactive "afilter:")
-  (let ((l (or filter-list 'clasker-active-filters)))
-    (add-to-list l callable-filter)
-    (clasker-revert)))
-
-(defun clasker-filter-add-filter-lisp (callable-filter &optional filter-list)
-  (interactive "Xlisp code to add:")
-  (let ((l (or filter-list 'clasker-active-filters)))
-    (add-to-list l callable-filter)
-    (clasker-revert)))
-
-(defun clasker-ticket-filtered (ticket filters)
-  (block nil
-    (dolist (f filters nil)
-      (unless (funcall f ticket)
-        (return t)))))
+(defun clasker-filtered-ticket-p (ticket)
+  (every (lambda (f) (funcall f ticket))
+         clasker-filter-functions))
 
 (defun clasker-filter-tickets (ticket-list)
-  (clasker-with-collect 
-    (dolist (ticket ticket-list)
-      (unless (clasker-ticket-filtered ticket clasker-active-filters)
-        (collect ticket)))))
+  (remove-if #'clasker-filtered-ticket-p ticket-list))
 
-(defun clasker-filter-only ()
-  (interactive)
-  (let ((ticket (clasker-ticket-at-point)))
-    (clasker-filter-add-filter (lambda (x) (clasker-ticket-ancestor-p ticket x)))))
+(defvar clasker-filter-expire 300
+  "Seconds to mark a archived ticket as expired.")
 
-(defun clasker-remove-filters ()
-  (interactive)
-  (setq clasker-active-filters clasker-default-filters)
-  (clasker-revert))
-
+(defun clasker-expired-ticket-p (ticket)
+  (and (clasker-ticket-archived-p ticket)
+       (clasker-ticket-get-property ticket 'archive-timestamp)
+       (> (float-time (time-subtract (current-time) (clasker-ticket-archived-since ticket)))
+          clasker-filter-expire)))
+(pushnew 'clasker-expired-ticket-p clasker-filter-functions)
 
 ;;;; User commands and interface
 
