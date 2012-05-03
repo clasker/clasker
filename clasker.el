@@ -654,6 +654,7 @@ list of tickets to be shown in the current view.")
           (setf ticket (make-instance 'clasker-ticket))
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
+          (clasker-save-ticket ticket)  ;hack hack hack
           (clasker-ticket-set-property ticket 'parent parent-id)
           (clasker-save-ticket ticket)
           (clasker-revert))))))
