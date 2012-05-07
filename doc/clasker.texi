@@ -47,16 +47,17 @@ The document was typeset with
 
 @c Generate the nodes for this menu with `C-c C-u C-m'.
 @menu
+* Overview::
+* Copying This Manual::
+* Index::
 @end menu
 
 @c Update all node entries with `C-c C-u C-n'.
 @c Insert new nodes with `C-c C-c n'.
-@node Chapter One
-@chapter Chapter One
+@node Overview, Copying This Manual, Top, Top
+@chapter Overview
 
-
-
-@node Copying This Manual
+@node Copying This Manual, Index, Overview, Top
 @appendix Copying This Manual
 
 @menu
@@ -66,7 +67,7 @@ The document was typeset with
 @c Get fdl.texi from http://www.gnu.org/licenses/fdl.html
 @include fdl.texi
 
-@node Index
+@node Index,  , Copying This Manual, Top
 @unnumbered Index
 
 @printindex cp
