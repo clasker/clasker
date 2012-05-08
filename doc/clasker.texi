@@ -50,6 +50,7 @@ The document was typeset with
 * Overview::
 * Basic Usage::                 Copying This Manual
 
+* Advanced Usage::
 * User Manual::
 * Hacking::
 * Copying This Manual::
@@ -62,6 +63,14 @@ Copying This Manual
  --- The Detailed Node Listing ---
 
 Overview
+
+* Basic Usage::
+* Advanced Usage::
+
+Copying This Manual
+
+* GNU Free Documentation License::  License for copying this manual.
+
 @end detailmenu
 @end menu
 
@@ -80,12 +89,16 @@ properties that is related to other tasks in a hierarchy.
 
 @menu
 * Basic Usage::
+* Advanced Usage::
 @end menu
 
-@node Basic Usage, User Manual, Overview, Top
+@node Basic Usage, Advanced Usage, Overview, Top
 @chapter Basic Usage
 
-@node User Manual, Hacking, Basic Usage, Top
+@node Advanced Usage, User Manual, Basic Usage, Top
+@chapter Advanced Usage
+
+@node User Manual, Hacking, Advanced Usage, Top
 @chapter User Manual
 
 @node Hacking, Copying This Manual, User Manual, Top
