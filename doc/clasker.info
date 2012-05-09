@@ -20,7 +20,7 @@ Ticket manager with workflow support.
 (http://www.texinfo.org/).
 
 
-File: clasker.info,  Node: Top,  Next: Overview,  Up: (dir)
+File: clasker.info,  Node: Top,  Next: Overview,  Prev: (dir),  Up: (dir)
 
 Clasker
 *******
@@ -46,17 +46,109 @@ Ticket manager with workflow support.
 * Menu:
 
 * Overview::
+* Basic Usage::                 Copying This Manual
+
+* Advanced Usage::
+* User Manual::
+* Plugins::
+* Hacking::
 * Copying This Manual::
-* Index::
+* Index::                       Overview
+
+
+Copying This Manual
+
+ --- The Detailed Node Listing ---
+
+Overview
+
+* Basic Usage::
+* Advanced Usage::
+
+Copying This Manual
+
+* GNU Free Documentation License::  License for copying this manual.
 
 
-File: clasker.info,  Node: Overview,  Next: Copying This Manual,  Prev: Top,  Up: Top
+File: clasker.info,  Node: Overview,  Next: Basic Usage,  Prev: Top,  Up: Top
 
 1 Overview
 **********
 
+Clasker is a task managing mode with automatization in mind. Clasker
+uses a special buffe, so text input is disabled by default. Let's say
+clasker buffers are less 'open' than org-mode ones, but clasker makes
+it easier to implement workflows over tasks.
+
+   The basic idea of clasker is that a ticket or task is just a set of
+properties that is related to other tasks in a hierarchy.
+
+   Create new tickets with clasker-new-tickets (default binded to c),
+or clasker-new-child-tickets (binded to C) to add new tickets as
+children of ticket at point.
+
+   Navigate through the tickets with 'n' and 'p' for next and
+previous.
+
+   To edit a ticket, pres RET on a ticket, and a menu will appear with
+the possible actions you can apply to that ticket. Default ones are
+archive and edit.
+
+   There are plugins that can be activated to add all kinds of
+functionality on top of this basic functionality. *Note Plugins::.
+
+ -- Action: clasker-action-archive
+     Archives the task. That's the recomended way to mark a ticket as
+     done.
+
+ -- Action: clasker-action-edit
+     Opens a buffer with the current description of the ticket. First
+     line of the description is considered the title and it's what
+     will be shown in the *Clasker* buffer. Next lines are considered
+     the full description of the ticket
+
+ -- Command: clasker-new-tickets
+     The command to enter top level tickets to clasker. Clasker asks
+     for a title. Enter the title followed by RET. Clasker asks for
+     more tickets. Leave blank to finish entering new tickets.
+
+* Menu:
+
+* Basic Usage::
+* Advanced Usage::
+
 
-File: clasker.info,  Node: Copying This Manual,  Next: Index,  Prev: Overview,  Up: Top
+File: clasker.info,  Node: Basic Usage,  Next: Advanced Usage,  Prev: Overview,  Up: Top
+
+2 Basic Usage
+*************
+
+
+File: clasker.info,  Node: Advanced Usage,  Next: User Manual,  Prev: Basic Usage,  Up: Top
+
+3 Advanced Usage
+****************
+
+
+File: clasker.info,  Node: User Manual,  Next: Plugins,  Prev: Advanced Usage,  Up: Top
+
+4 User Manual
+*************
+
+
+File: clasker.info,  Node: Plugins,  Next: Hacking,  Prev: User Manual,  Up: Top
+
+5 Plugins
+*********
+
+
+File: clasker.info,  Node: Hacking,  Next: Copying This Manual,  Prev: Plugins,  Up: Top
+
+6 Hacking
+*********
+
+
+File: clasker.info,  Node: Copying This Manual,  Next: Index,  Prev: Hacking,  Up: Top
 
 Appendix A Copying This Manual
 ******************************
@@ -519,9 +611,14 @@ Index
 
 Tag Table:
 Node: Top801
-Node: Overview1617
-Node: Copying This Manual1729
-Node: GNU Free Documentation License1962
-Node: Index24390
+Node: Overview1969
+Node: Basic Usage3661
+Node: Advanced Usage3782
+Node: User Manual3912
+Node: Plugins4032
+Node: Hacking4137
+Node: Copying This Manual4250
+Node: GNU Free Documentation License4482
+Node: Index26910
 
 End Tag Table

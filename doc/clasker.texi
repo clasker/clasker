@@ -29,7 +29,7 @@ The document was typeset with
 @titlepage
 @title Clasker
 @subtitle Ticket manager with workflow support
-@author kidd <kidd@sunflower>
+@author Raimon Grau <raimonster@gmail.com>
 @page
 @vskip 0pt plus 1filll
 @insertcopying
@@ -52,6 +52,7 @@ The document was typeset with
 
 * Advanced Usage::
 * User Manual::
+* Plugins::
 * Hacking::
 * Copying This Manual::
 * Index::                       Overview
@@ -72,6 +73,7 @@ Copying This Manual
 * GNU Free Documentation License::  License for copying this manual.
 
 @end detailmenu
+
 @end menu
 
 @c Update all node entries with `C-c C-u C-n'.
@@ -87,6 +89,46 @@ it easier to implement workflows over tasks.
 The basic idea of clasker is that a ticket or task is just a set of
 properties that is related to other tasks in a hierarchy.
 
+Create new tickets with clasker-new-tickets (default binded to c), or
+clasker-new-child-tickets (binded to C) to add new tickets as children
+of ticket at point.
+
+Navigate through the tickets with 'n' and 'p' for next and previous.
+
+To edit a ticket, pres RET on a ticket, and a menu will appear with
+the possible actions you can apply to that ticket. Default ones are
+archive and edit.
+
+There are plugins that can be activated to add all kinds of
+functionality on top of this basic functionality. @xref{Plugins}.
+
+@c (let ((symbols))
+@c   (mapatoms (lambda (symbol)
+@c     (when (and (string-match "^clasker-action" (symbol-name symbol))
+@c       (functionp symbol))
+@c       (push symbol symbols))))
+@c   symbols)
+
+
+@deffn Action clasker-action-archive
+Archives the task. That's the recomended way to mark a ticket as done.
+@end deffn
+
+@deffn Action clasker-action-edit
+Opens a buffer with the current description of the ticket. First line
+of the description is considered the title and it's what will be shown
+in the *Clasker* buffer. Next lines are considered the full
+description of the ticket
+@end deffn
+
+
+
+@deffn Command clasker-new-tickets
+The command to enter top level tickets to clasker. Clasker asks for a
+title. Enter the title followed by RET. Clasker asks for more
+tickets. Leave blank to finish entering new tickets.
+@end deffn
+
 @menu
 * Basic Usage::
 * Advanced Usage::
@@ -95,13 +137,18 @@ properties that is related to other tasks in a hierarchy.
 @node Basic Usage, Advanced Usage, Overview, Top
 @chapter Basic Usage
 
+
+
 @node Advanced Usage, User Manual, Basic Usage, Top
 @chapter Advanced Usage
 
-@node User Manual, Hacking, Advanced Usage, Top
+@node User Manual, Plugins, Advanced Usage, Top
 @chapter User Manual
 
-@node Hacking, Copying This Manual, User Manual, Top
+@node Plugins, Hacking, User Manual, Top
+@chapter Plugins
+
+@node Hacking, Copying This Manual, Plugins, Top
 @chapter Hacking
 
 @node Copying This Manual, Index, Hacking, Top
