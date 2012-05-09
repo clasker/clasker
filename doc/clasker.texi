@@ -1,5 +1,6 @@
 \input texinfo   @c -*-texinfo-*-
 @c %**start of header
+@c http://tex.loria.fr/texlive-htmldoc/texinfo/texinfo_toc.html
 @setfilename clasker.info
 @settitle Clasker
 @c %**end of header
@@ -53,6 +54,9 @@ The document was typeset with
 * Advanced Usage::
 * User Manual::
 * Plugins::
+* Active Task::
+* Github::
+* Pomodoro::
 * Hacking::
 * Copying This Manual::
 * Index::                       Overview
@@ -121,8 +125,6 @@ in the *Clasker* buffer. Next lines are considered the full
 description of the ticket
 @end deffn
 
-
-
 @deffn Command clasker-new-tickets
 The command to enter top level tickets to clasker. Clasker asks for a
 title. Enter the title followed by RET. Clasker asks for more
@@ -137,18 +139,46 @@ tickets. Leave blank to finish entering new tickets.
 @node Basic Usage, Advanced Usage, Overview, Top
 @chapter Basic Usage
 
-
-
 @node Advanced Usage, User Manual, Basic Usage, Top
 @chapter Advanced Usage
 
 @node User Manual, Plugins, Advanced Usage, Top
 @chapter User Manual
 
-@node Plugins, Hacking, User Manual, Top
+@node Plugins, Active Task, User Manual, Top
 @chapter Plugins
 
-@node Hacking, Copying This Manual, Plugins, Top
+@menu
+* Active Task::
+* Github::
+* Pomodoro::
+@end menu
+
+@node Active Task, Github, Plugins, Top
+@chapter Active Task
+
+This plugin adds another action for every ticket, that makes it
+globally understood as the active task. The property active gets added
+to the given task, and all emacs can access it through variable
+clasker-active-ticket.
+
+@deffn Action clasker-action-activate-ticket
+Sets the current ticket as the active ticket
+@end deffn
+
+When active ticket is loaded, you can set the variable
+`clasker-active-ticket-github' to non nil to prepend the number of
+github issue to magit commit buffers.  The number prepended is the
+github id of the ticket itself, or the github id of the nearest
+ancestor that is a github issue.
+
+@node Github, Pomodoro, Active Task, Top
+@chapter Github
+
+@node Pomodoro, Hacking, Github, Top
+@chapter Pomodoro
+
+@node Hacking, Copying This Manual, Pomodoro, Top
 @chapter Hacking
 
 @node Copying This Manual, Index, Hacking, Top

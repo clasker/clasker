@@ -51,6 +51,9 @@ Ticket manager with workflow support.
 * Advanced Usage::
 * User Manual::
 * Plugins::
+* Active Task::
+* Github::
+* Pomodoro::
 * Hacking::
 * Copying This Manual::
 * Index::                       Overview
@@ -136,15 +139,53 @@ File: clasker.info,  Node: User Manual,  Next: Plugins,  Prev: Advanced Usage,  
 *************
 
 
-File: clasker.info,  Node: Plugins,  Next: Hacking,  Prev: User Manual,  Up: Top
+File: clasker.info,  Node: Plugins,  Next: Active Task,  Prev: User Manual,  Up: Top
 
 5 Plugins
 *********
 
-
-File: clasker.info,  Node: Hacking,  Next: Copying This Manual,  Prev: Plugins,  Up: Top
+* Menu:
 
-6 Hacking
+* Active Task::
+* Github::
+* Pomodoro::
+
+
+File: clasker.info,  Node: Active Task,  Next: Github,  Prev: Plugins,  Up: Top
+
+6 Active Task
+*************
+
+This plugin adds another action for every ticket, that makes it
+globally understood as the active task. The property active gets added
+to the given task, and all emacs can access it through variable
+clasker-active-ticket.
+
+ -- Action: clasker-action-activate-ticket
+     Sets the current ticket as the active ticket
+
+   When active ticket is loaded, you can set the variable
+`clasker-active-ticket-github' to non nil to prepend the number of
+github issue to magit commit buffers.  The number prepended is the
+github id of the ticket itself, or the github id of the nearest
+ancestor that is a github issue.
+
+
+File: clasker.info,  Node: Github,  Next: Pomodoro,  Prev: Active Task,  Up: Top
+
+7 Github
+********
+
+
+File: clasker.info,  Node: Pomodoro,  Next: Hacking,  Prev: Github,  Up: Top
+
+8 Pomodoro
+**********
+
+
+File: clasker.info,  Node: Hacking,  Next: Copying This Manual,  Prev: Pomodoro,  Up: Top
+
+9 Hacking
 *********
 
 
@@ -611,14 +652,17 @@ Index
 
 Tag Table:
 Node: Top801
-Node: Overview1969
-Node: Basic Usage3661
-Node: Advanced Usage3782
-Node: User Manual3912
-Node: Plugins4032
-Node: Hacking4137
-Node: Copying This Manual4250
-Node: GNU Free Documentation License4482
-Node: Index26910
+Node: Overview2009
+Node: Basic Usage3701
+Node: Advanced Usage3822
+Node: User Manual3952
+Node: Plugins4072
+Node: Active Task4231
+Node: Github4950
+Node: Pomodoro5053
+Node: Hacking5156
+Node: Copying This Manual5270
+Node: GNU Free Documentation License5502
+Node: Index27930
 
 End Tag Table
