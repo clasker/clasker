@@ -79,6 +79,11 @@
   :group 'clasker)
 (unless(file-exists-p clasker-directory)
   (make-directory clasker-directory))
+
+(defcustom clasker-buffer-name "*Clasker*"
+  "Main Clasker buffer name"
+  :group 'clasker)
+
 
 ;;;; Tickets
 
@@ -732,7 +737,7 @@ list of tickets to be shown in the current view.")
 (defun clasker ()
   "docstring"
   (interactive)
-  (switch-to-buffer "*Clasker*")
+  (switch-to-buffer clasker-buffer-name)
   (clasker-mode)
   (clasker-revert))
 
