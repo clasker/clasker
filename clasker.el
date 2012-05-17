@@ -463,7 +463,8 @@ class whose name is CLASS2. Otherwise return NIL."
 (defun clasker-action-archive (ticket)
   (clasker-ticket-set-property ticket 'archived t)
   (clasker-ticket-set-property ticket 'archive-timestamp (butlast (current-time)))
-  (clasker-save-ticket ticket))
+  (clasker-save-ticket ticket)
+  (clasker-revert))
 
 ;;;; Views
 
@@ -619,14 +620,15 @@ list of tickets to be shown in the current view.")
     (clasker-show-ticket ticket)))
 
 (defun clasker-revert (&optional _ignore-auto _noconfirm)
-  (widen)
-  (let ((position (point))
-        (inhibit-read-only t))
-    (erase-buffer)
-    (insert (propertize clasker-title 'font-lock-face 'info-title-1) "\n\n")
-    (clasker-show-tickets (clasker-current-view))
-    (run-hooks 'clasker-display-hook)
-    (goto-char (min position (point-max)))))
+  (clasker--in-clasker-buffer
+      (widen)
+    (let ((position (point))
+          (inhibit-read-only t))
+      (erase-buffer)
+      (insert (propertize clasker-title 'font-lock-face 'info-title-1) "\n\n")
+      (clasker-show-tickets (clasker-current-view))
+      (run-hooks 'clasker-display-hook)
+      (goto-char (min position (point-max))))))
 
 (defun clasker-quit ()
   (interactive)
@@ -704,8 +706,7 @@ list of tickets to be shown in the current view.")
       (let ((action (clasker-read-action actions)))
         (when action
           (dolist (ticket tickets)
-            (funcall action ticket))))))
-  (clasker-revert))
+            (funcall action ticket)))))))
 
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
@@ -744,6 +745,14 @@ list of tickets to be shown in the current view.")
 
 
 (defvar current-ticket)
+
+(defmacro clasker--in-clasker-buffer (&rest body)
+  (let ((clasker-buffer (get-buffer clasker-buffer-name)))
+    (if (not clasker-buffer)
+        (error "clasker is not running")
+      `(save-excursion
+         (switch-to-buffer ,clasker-buffer)
+         ,@body))))
 
 (defmacro clasker-with-new-window (buffer-name height &rest body)
   (declare (indent 1))
