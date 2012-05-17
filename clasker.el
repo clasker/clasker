@@ -632,7 +632,7 @@ list of tickets to be shown in the current view.")
 
 (defun clasker-quit ()
   (interactive)
-  (kill-buffer "*Clasker*"))
+  (kill-buffer clasker-buffer-name))
 
 (defun clasker-new-tickets ()
   (interactive)
