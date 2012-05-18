@@ -90,17 +90,17 @@ gh.el. Adding the extra properties needed for clasker."
     (clasker-ticket-set-property ticket 'gh-source source)
     ticket))
 
-(defmethod slot-unbound ((issue gh-issues-issue) class name fn)
-  "")
+(defmethod slot-unbound ((issue gh-issues-issue) class name fn) "")
 
 (defun clasker-github-import-from-github (source)
   "Import a list of issues from a user/project in github."
   (interactive "MRepository (user/project): ")
-  (let* ((gh-api (gh-issues-api2))
-         (user/project (split-string source "/"))
-         (response (apply #'gh-issues-issue-list gh-api user/project)))
-    (gh-api-add-response-callback  response (lambda (issues)
-					       (clasker-github-save-ticket issues "kidd/readerly")))))
+  (let* ((gh-api (gh-issues-api3))
+         (user/project source)
+         (response (apply #'gh-issues-issue-list gh-api  (split-string source "/"))))
+    (gh-api-add-response-callback response
+                                  (lambda (issues)
+                                    (clasker-github-save-tickets issues source)))))
 
 
 (defun clasker--github-tickets ()
@@ -133,7 +133,7 @@ tickets. Creating new tickets or updating content in old ones."
 (defmethod clasker-github-save-ticket-to-github ((ticket clasker-github-ticket))
   )
 
-(defun gh-issues-api2 (&optional sync auth)
+(defun gh-issues-api3 (&optional sync auth)
   (gh-issues-api "api" :sync sync :cache nil :auth (make-instance 'gh-oauth-authenticator) :num-retries 1))
 
 (defun clasker-github-update-ticket (ticket other)
