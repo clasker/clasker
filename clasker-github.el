@@ -35,6 +35,11 @@
 ;;; `clasker-github-ticket-p'.
 ;;;
 
+;;; Properties added:
+;;; gh-source => user/repo of the ticket
+;;; gh-issue => Number of the issue in github repo
+;;;
+
 ;;; Magit integration is minimally supported adding the prefix [#xxx]
 ;;; on commit messages where xxx is the github id of
 ;;; `clasker-active-ticket'.
@@ -63,6 +68,7 @@
      t)))
 
 (defmethod clasker-ticket-headline ((ticket clasker-github-ticket))
+  "Hook method that prepends the issue number to the headline"
   (concat (format "[#%s]:" (clasker-ticket-get-property ticket 'github-id))
           (call-next-method)))
 
