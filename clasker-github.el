@@ -47,11 +47,8 @@
 (require 'gh-issues)
 (require 'gh-auth)
 
-(defclass clasker-github-ticket (clasker-ticket) () "foo")
-;(add-to-list 'clasker-allowed-ticket-classes 'clasker-github-ticket)
-
-;; (defmethod initialize-instance ((ticket clasker-github-ticket))
-;;   (call-next-method))
+(defclass clasker-github-ticket (clasker-ticket) ()
+  "Subclass for clasker-tickets that belong to a github repository issue")
 
 (defun clasker-iso8601-timestring (string)
   (save-match-data
@@ -69,9 +66,8 @@
   (concat (format "[#%s]:" (clasker-ticket-get-property ticket 'github-id))
           (call-next-method)))
 
-(defun clasker-github-issue-to-ticket (issue)
+(defun clasker-github-issue-to-ticket (issue source)
   (let ((ticket (make-instance 'clasker-github-ticket)))
-;    (clasker-ticket-set-property ticket 'class 'clasker-github-ticket)
     (clasker-ticket-set-property
      ticket
      'description
@@ -84,6 +80,7 @@
                                  (and (oref issue created_at)
                                       (clasker-iso8601-timestring  (oref issue created_at))))
     (clasker-ticket-set-property ticket 'github-id (oref issue number))
+    (clasker-ticket-set-property ticket 'gh-source source)
     ticket))
 
 (defmethod slot-unbound ((issue gh-issues-issue) class name fn)
@@ -95,21 +92,28 @@
   (let* ((gh-api (gh-issues-api2))
          (user/project (split-string source "/"))
          (response (apply #'gh-issues-issue-list gh-api user/project)))
-    (gh-api-add-response-callback  response 'clasker-github-save-ticket)))
+    (gh-api-add-response-callback  response (lambda (issues)
+					       (clasker-github-save-ticket issues "kidd/readerly")))))
+
 
 (defun clasker--github-tickets ()
-  (let ((table (make-hash-table))
-        (tickets (clasker-load-tickets)))
+  (let ((table (make-hash-table :test #'equal))
+        (tickets (remove-if-not 'clasker-github-ticket-p (clasker-load-tickets))))
     (dolist (ticket tickets)
-      (puthash (clasker-ticket-get-property ticket 'github-id) ticket table))
+      (puthash (concatenate 'string (clasker-ticket-get-property ticket 'gh-source) "/"
+                            (number-to-string
+                             (clasker-ticket-get-property ticket 'github-id))) ticket table))
     table))
 
-(defun clasker-github-save-ticket (issues)
+(defun clasker-github-save-ticket (issues source)
   (interactive)
-  (let ((gh-tickets (clasker--github-tickets)))
+  (let ((gh-tickets2 (clasker--github-tickets)))
     (dolist (issue issues)
-      (let* ((gh-issue (clasker-github-issue-to-ticket issue))
-             (clasker-ticket (gethash (clasker-ticket-get-property gh-issue 'github-id) gh-tickets)))
+      (let* ((gh-issue (clasker-github-issue-to-ticket issue source))
+             (gh-tickets (clasker--github-tickets))
+             (clasker-ticket (gethash (concatenate 'string source "/"
+                                                   (number-to-string (clasker-ticket-get-property gh-issue 'github-id)))
+                                      gh-tickets)))
         (clasker-save-ticket
          (if clasker-ticket
              (clasker-github-update-ticket clasker-ticket gh-issue)
@@ -117,7 +121,8 @@
   (clasker-revert))
 
 ;;; TODO: NIY
-(defmethod clasker-github-save-ticket-to-github ((ticket )))
+(defmethod clasker-github-save-ticket-to-github ((ticket clasker-github-ticket))
+  )
 
 (defun gh-issues-api2 (&optional sync auth)
   (gh-issues-api "api" :sync sync :cache nil :auth (make-instance 'gh-oauth-authenticator) :num-retries 1))
@@ -148,4 +153,11 @@
  (add-hook 'magit-log-edit-mode-hook 'clasker-github-set-description-on-magit-commit))
 
 (provide 'clasker-github)
+
+;;; Local variables:
+;;; lexical-binding: t
+;;; indent-tabs-mode: nil
+;;; fill-column: 80
+;;; End:
+
 ;;; clasker-github.el ends here
