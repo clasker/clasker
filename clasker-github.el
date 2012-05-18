@@ -68,11 +68,12 @@
      t)))
 
 (defmethod clasker-ticket-headline ((ticket clasker-github-ticket))
-  "Hook method that prepends the issue number to the headline"
   (concat (format "[#%s]:" (clasker-ticket-get-property ticket 'github-id))
           (call-next-method)))
 
 (defun clasker-github-issue-to-ticket (issue source)
+  "Creates a clasker ticket from an instance of gh-issue from
+gh.el. Adding the extra properties needed for clasker."
   (let ((ticket (make-instance 'clasker-github-ticket)))
     (clasker-ticket-set-property
      ticket
@@ -111,7 +112,9 @@
                              (clasker-ticket-get-property ticket 'github-id))) ticket table))
     table))
 
-(defun clasker-github-save-ticket (issues source)
+(defun clasker-github-save-tickets (issues source)
+  "Saves all tickets that came in the same reply as clasker
+tickets. Creating new tickets or updating content in old ones."
   (interactive)
   (let ((gh-tickets2 (clasker--github-tickets)))
     (dolist (issue issues)
@@ -134,11 +137,13 @@
   (gh-issues-api "api" :sync sync :cache nil :auth (make-instance 'gh-oauth-authenticator) :num-retries 1))
 
 (defun clasker-github-update-ticket (ticket other)
+  "Updates the description of ticket with value of other's
+description. Add more fields here if you care about more data."
   (clasker-ticket-set-property ticket 'description
                                (clasker-ticket-get-property other 'description))
   ticket)
 
-;;; Magit support
+;;; Experimental Magit support
 
 (when (featurep 'magit)
  (defun clasker-github-magit-log-edit-append (str)

@@ -125,6 +125,12 @@ class whose name is CLASS2. Otherwise return NIL."
        (class-p class2)
        (child-of-class-p class1 class2)))
 
+(defgeneric clasker-ticket-headline (ticket)
+"Hook method that prepends the issue number to the headline.\n
+This method is intended to be overwriten if you want your
+subclass to be displayed in a different way in the main clasker buffer")
+
+
 (defun clasker--quote-string (string)
   (replace-regexp-in-string "\n" "\\\\n"
    (replace-regexp-in-string "\\\\" "\\\\\\\\" string)))
