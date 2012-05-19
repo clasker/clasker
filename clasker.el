@@ -626,7 +626,7 @@ list of tickets to be shown in the current view.")
     (clasker-show-ticket ticket)))
 
 (defun clasker-revert (&optional _ignore-auto _noconfirm)
-  (clasker--in-clasker-buffer
+  (with-current-buffer clasker-buffer-name
       (widen)
     (let ((position (point))
           (inhibit-read-only t))
@@ -751,14 +751,6 @@ list of tickets to be shown in the current view.")
 
 
 (defvar current-ticket)
-
-(defmacro clasker--in-clasker-buffer (&rest body)
-  (let ((clasker-buffer (get-buffer clasker-buffer-name)))
-    (if (not clasker-buffer)
-        (error "clasker is not running")
-      `(save-excursion
-         (switch-to-buffer ,clasker-buffer)
-         ,@body))))
 
 (defmacro clasker-with-new-window (buffer-name height &rest body)
   (declare (indent 1))
