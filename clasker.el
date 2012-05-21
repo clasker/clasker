@@ -168,6 +168,7 @@ class whose name is CLASS2. Otherwise return NIL."
       (clasker-ticket-set-property ticket (car prop) (cdr prop)))
     ticket))
 
+
 ;;; Load an individual ticket given by the identifier ID. It could modify
 ;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
 (defun clasker-load-id (id)
@@ -270,7 +271,7 @@ class whose name is CLASS2. Otherwise return NIL."
         (goto-char (point-min))
         (forward-line (1- line))
         (delete-region (line-beginning-position) (line-end-position)))
-      (oset ticket filename clasker-ticket-file)
+      (oset ticket filename (expand-file-name clasker-ticket-file))
       (oset ticket line (line-number-at-pos))
       (let ((properties (oref ticket properties)))
         (insert
@@ -321,17 +322,15 @@ class whose name is CLASS2. Otherwise return NIL."
           (newparent (clasker-resolve-id new-value)))
       (when oldparent
         (let ((siblings (remove ticket (clasker-ticket-childs oldparent))))
-          (clasker-ticket-set-property oldparent 'childs (mapcar 'clasker-ticket-id siblings))))
+          (clasker-ticket-set-property oldparent 'childs siblings)))
       (when newparent
         (let ((siblings (cons ticket (clasker-ticket-childs newparent))))
-          (clasker-ticket-set-property newparent 'childs (mapcar 'clasker-ticket-id siblings)))))))
+          (clasker-ticket-set-property newparent 'childs siblings))))))
 (clasker-add-property-hook 'parent 'clasker-update-childs)
 
 
 (defun clasker-ticket-childs (ticket)
-  (let ((refers (clasker-ticket-get-property ticket 'childs nil t)))
-    (when refers (mapcar 'clasker-resolve-id refers))))
-
+  (clasker-ticket-get-property ticket 'childs nil t))
 
 (defmethod clasker-ticket-class ((ticket clasker-ticket) value)
   (or (clasker-ticket-get-property ticket 'class value nil t) 'clasker-ticket))
