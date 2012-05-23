@@ -37,7 +37,7 @@
 
 ;;; Properties added:
 ;;; gh-source => user/repo of the ticket
-;;; gh-issue => Number of the issue in github repo
+;;; gh-id => Number of the issue in github repo
 ;;;
 
 ;;; Magit integration is minimally supported adding the prefix [#xxx]
@@ -51,6 +51,10 @@
 ;(require 'clasker)
 (require 'gh-issues)
 (require 'gh-auth)
+
+(defvar clasker-github-remote nil "Enable modifying remote content
+of gh-issues. when non-nil, changing the description of a ticket
+in clasker, or archiving it will modify remote repo" )
 
 (defclass clasker-github-ticket (clasker-ticket) ()
   "Subclass for clasker-tickets that belong to a github repository issue")
@@ -68,7 +72,7 @@
      t)))
 
 (defmethod clasker-ticket-headline ((ticket clasker-github-ticket))
-  (concat (format "[#%s]:" (clasker-ticket-get-property ticket 'github-id))
+  (concat (format "[#%s]:" (clasker-ticket-get-property ticket 'gh-id))
           (call-next-method)))
 
 (defun clasker-github-issue-to-ticket (issue source)
@@ -86,7 +90,7 @@ gh.el. Adding the extra properties needed for clasker."
     (clasker-ticket-set-property ticket 'timestamp
                                  (and (oref issue created_at)
                                       (clasker-iso8601-timestring  (oref issue created_at))))
-    (clasker-ticket-set-property ticket 'github-id (oref issue number))
+    (clasker-ticket-set-property ticket 'gh-id (oref issue number))
     (clasker-ticket-set-property ticket 'gh-source source)
     ticket))
 
@@ -104,12 +108,14 @@ gh.el. Adding the extra properties needed for clasker."
 
 
 (defun clasker--github-tickets ()
+  "returns a hash table with all clasker-github-tickets. The keys
+  are strings \"user/repo/id\" and the tickets as values"
   (let ((table (make-hash-table :test #'equal))
         (tickets (remove-if-not 'clasker-github-ticket-p (clasker-load-tickets))))
     (dolist (ticket tickets)
       (puthash (concatenate 'string (clasker-ticket-get-property ticket 'gh-source) "/"
                             (number-to-string
-                             (clasker-ticket-get-property ticket 'github-id))) ticket table))
+                             (clasker-ticket-get-property ticket 'gh-id))) ticket table))
     table))
 
 (defun clasker-github-save-tickets (issues source)
@@ -121,7 +127,7 @@ tickets. Creating new tickets or updating content in old ones."
       (let* ((gh-issue (clasker-github-issue-to-ticket issue source))
              (gh-tickets (clasker--github-tickets))
              (clasker-ticket (gethash (concatenate 'string source "/"
-                                                   (number-to-string (clasker-ticket-get-property gh-issue 'github-id)))
+                                                   (number-to-string (clasker-ticket-get-property gh-issue 'gh-id)))
                                       gh-tickets)))
         (clasker-save-ticket
          (if clasker-ticket
@@ -134,7 +140,9 @@ tickets. Creating new tickets or updating content in old ones."
   )
 
 (defun gh-issues-api3 (&optional sync auth)
-  (gh-issues-api "api" :sync sync :cache nil :auth (make-instance 'gh-oauth-authenticator) :num-retries 1))
+  (gh-issues-api "api" :sync sync :cache nil
+                 :auth (make-instance 'gh-oauth-authenticator)
+                 :num-retries 1))
 
 (defun clasker-github-update-ticket (ticket other)
   "Updates the description of ticket with value of other's
@@ -142,6 +150,17 @@ description. Add more fields here if you care about more data."
   (clasker-ticket-set-property ticket 'description
                                (clasker-ticket-get-property other 'description))
   ticket)
+
+;;; Archive is synchronized with open/closed state
+(clasker-add-property-hook 'archived 'clasker-github-archive)
+(defmethod clasker-github-archive ((ticket clasker-github-ticket) _property new-value)
+  (let ((ticket-source (split-string (clasker-ticket-get-property ticket 'gh-source) "/"))
+        (id (clasker-ticket-get-property ticket 'gh-id)))
+   (gh-issues-issue-update (gh-issues-api3)
+                           (car ticket-source)
+                           (cadr ticket-source)
+                           (number-to-string id)
+                           `(("state" . ,(if new-value "closed" "open"))))))
 
 ;;; Experimental Magit support
 
@@ -153,12 +172,12 @@ description. Add more fields here if you care about more data."
 
  (defun clasker-github-set-description-on-magit-commit ()
    (when clasker-active-ticket
-     (let ((github-id (clasker-ticket-get-property-in-hierarchy
-                       clasker-active-ticket 'github-id) ))
-       (if github-id
+     (let ((gh-id (clasker-ticket-get-property-in-hierarchy
+                       clasker-active-ticket 'gh-id) ))
+       (if gh-id
            (clasker-github-magit-log-edit-append
             (concat "[#" (number-to-string
-                          github-id) "]"))))))
+                          gh-id) "]"))))))
 
 
  (add-hook 'magit-log-edit-mode-hook 'clasker-github-set-description-on-magit-commit))
