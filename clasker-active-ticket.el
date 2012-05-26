@@ -20,6 +20,8 @@
 
 ;;; Commentary:
 
+;;; Dependencies: clasker
+
 ;;; Clasker-active-ticket uses a simple mechanism to enable an active
 ;;; ticket.  That should be used to keep track of which task you're
 ;;; doing in any time.  It's not very useful per se, but this sets the
@@ -33,15 +35,11 @@
 ;;;
 ;;;
 
-;;; (add-hook 'clasker-activate-ticket-hook 'foo)
-;;; (add-hook 'clasker-deactivate-ticket-hook 'foo)
-
 ;;; Code:
 
 (defvar clasker-active-ticket nil "current active ticket")
 (defvar clasker-activate-ticket-hook nil "hook on activating a task")
 (defvar clasker-deactivate-ticket-hook nil "hook on deactivating a task")
-
 
 (defmethod clasker-active-p ((ticket clasker-ticket))
   "answers t if ticket is the current active ticket"
