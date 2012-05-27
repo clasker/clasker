@@ -452,8 +452,9 @@ class whose name is CLASS2. Otherwise return NIL."
 (defun clasker-ticket-actions (ticket)
   (case (clasker-ticket-get-property ticket 'status)
     (todo
-     '(("Cancel" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'cancelled)))
-       ("Start" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'started)))))
+     '(("Start" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'started)))
+       ("Cancel" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'cancelled)))
+       ))
     (cancelled
      '(("Reopen" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'todo)))))
     (started
@@ -614,7 +615,7 @@ list of tickets to be shown in the current view.")
              " "
              (propertize description 'clasker-ticket ticket))
      'font-lock-face (if (clasker-ticket-archived-p ticket) 'shadow nil))
-    ;; Insert timestring
+
     (clasker-insert
      (concat (make-string (max 0 (- (window-width) (current-column) (length timestring) 2)) ?\s)
              timestring
