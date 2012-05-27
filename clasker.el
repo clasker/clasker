@@ -450,7 +450,20 @@ class whose name is CLASS2. Otherwise return NIL."
   (clasker-save-ticket ticket))
 
 (defun clasker-ticket-actions (ticket)
-  clasker-default-actions)
+  (case (clasker-ticket-get-property ticket 'status)
+    (todo
+     '(("Cancel" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'cancelled)))
+       ("Start" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'started)))))
+    (cancelled
+     '(("Reopen" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'todo)))))
+    (started
+     '(("Complete" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'done)))
+       ("Cancel" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'cancelled)))))
+    (done
+     '(("Reopen" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'started)))))
+    (t
+     '(("Accept"  . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'todo)))
+       ("Discard" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'discard)))))))
 
 ;;;; Views
 
@@ -573,9 +586,10 @@ list of tickets to be shown in the current view.")
 (defmethod clasker-ticket-headline ((ticket clasker-ticket))
   (let* ((lines (split-string (clasker-ticket-description ticket) "\n"))
          (header (first lines)))
-    (if (< 1 (length lines))
-        (concat header " ...")
-      header)))
+    (with-output-to-string
+      (princ header)
+      (when (< 1 (length lines))
+        (princ " ...")))))
 
 (defun clasker-ticket-level (ticket)
   (let ((level 0))
@@ -585,21 +599,27 @@ list of tickets to be shown in the current view.")
       (setq level (1+ level)))
     level))
 
+(defun clasker-insert (string &rest properties)
+  (insert (apply 'propertize string properties)))
+
 (defun clasker-show-ticket (ticket)
   (let ((description (clasker-ticket-headline ticket))
         (timestring
          (let ((secs (clasker-ticket-ago ticket)))
            (if secs (clasker-format-seconds secs) ""))))
-    (insert (propertize (concat (make-string (* 3 (1+ (clasker-ticket-level ticket))) ?\s)
-                                description
-                                (make-string (max 0 (- (window-width)
-                                                       (* 3 (1+ (clasker-ticket-level ticket)))
-                                                       (length description)
-                                                       (length timestring) 3)) ?\s)
-                                (propertize timestring 'font-lock-face 'compilation-info)
-                                "\n")
-                        'clasker-ticket ticket
-                        'font-lock-face (if (clasker-ticket-archived-p ticket) 'shadow nil)))))
+    ;; Insert status and descripcion
+    (clasker-insert
+     (concat (make-string (* 3 (1+ (clasker-ticket-level ticket))) ?\s)
+             (upcase (symbol-name (or (clasker-ticket-get-property ticket 'status) 'new)))
+             " "
+             (propertize description 'clasker-ticket ticket))
+     'font-lock-face (if (clasker-ticket-archived-p ticket) 'shadow nil))
+    ;; Insert timestring
+    (clasker-insert
+     (concat (make-string (max 0 (- (window-width) (current-column) (length timestring) 2)) ?\s)
+             timestring
+             "\n")
+     'font-lock-face (if (clasker-ticket-archived-p ticket) 'shadow nil))))
 
 (defun clasker-show-tickets (list)
   (dolist (ticket list)
@@ -694,8 +714,9 @@ list of tickets to be shown in the current view.")
       (let ((action (clasker-read-action actions)))
         (when action
           (dolist (ticket tickets)
-            (funcall action ticket))))))
-  (clasker-revert))
+            (funcall action ticket)))))
+    (mapc 'clasker-save-ticket tickets)
+    (clasker-revert)))
 
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
