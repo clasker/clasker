@@ -53,6 +53,7 @@
 ;;;       Specify a hierarchy relationship with other ticket. It is an integer,
 ;;;       it refers to the ticket stored in the same file with that line number.
 ;;;
+;;;       
 ;;;
 ;;; Two generic functions are provided to manipulate the properties of a ticket:
 ;;; `clasker-ticket-get-property' and `clasker-ticket-set-property'.
@@ -384,18 +385,19 @@ class whose name is CLASS2. Otherwise return NIL."
                 (or (not (get-text-property next-ticket-pos 'clasker-ticket))
                     (equal next-ticket-pos ticket)))
       (setq next-ticket-pos (funcall movement-func next-ticket-pos 'clasker-ticket)))
-    (goto-char (if next-ticket-pos next-ticket-pos point))))
+    (when next-ticket-pos
+      (goto-char next-ticket-pos))))
 
 (defun clasker-next-ticket (&optional arg)
   (interactive "p")
   (setq arg (or arg 1))
-  (dotimes (_i arg)
+  (dotimes (_i arg t)
     (clasker--following-single-ticket 'next-single-property-change)))
 
 (defun clasker-previous-ticket (&optional arg)
   (interactive "p")
   (setq arg (or arg 1))
-  (dotimes (_i arg)
+  (dotimes (_i arg t)
     (clasker--following-single-ticket 'previous-single-property-change)))
 
 
@@ -442,11 +444,13 @@ class whose name is CLASS2. Otherwise return NIL."
       (delete-window window)
       value)))
 
-
 (defun clasker-action-archive (ticket)
   (clasker-ticket-set-property ticket 'archived t)
   (clasker-ticket-set-property ticket 'archive-timestamp (butlast (current-time)))
   (clasker-save-ticket ticket))
+
+(defun clasker-ticket-actions (ticket)
+  clasker-default-actions)
 
 ;;;; Views
 
@@ -681,7 +685,11 @@ list of tickets to be shown in the current view.")
   (interactive)
   (let* ((clasker-inhibit-confirm t)
          (tickets (clasker-active-tickets))
-         (actions clasker-default-actions))
+         (actions
+          (let ((all-actions (mapcar 'clasker-ticket-actions tickets)))
+            (flet ((combine (actions1 actions2)
+                     (intersection actions1 actions2 :test 'equal)))
+              (reduce 'combine all-actions)))))
     (when (and actions tickets)
       (let ((action (clasker-read-action actions)))
         (when action
