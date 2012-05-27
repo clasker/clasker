@@ -453,8 +453,7 @@ class whose name is CLASS2. Otherwise return NIL."
   (case (clasker-ticket-get-property ticket 'status)
     (todo
      '(("Start" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'started)))
-       ("Cancel" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'cancelled)))
-       ))
+       ("Cancel" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'cancelled)))))
     (cancelled
      '(("Reopen" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'todo)))))
     (started
