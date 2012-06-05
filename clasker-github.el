@@ -152,15 +152,15 @@ description. Add more fields here if you care about more data."
   ticket)
 
 ;;; Archive is synchronized with open/closed state
-(clasker-add-property-hook 'archived 'clasker-github-archive)
-(defmethod clasker-github-archive ((ticket clasker-github-ticket) _property new-value)
-  (let ((ticket-source (split-string (clasker-ticket-get-property ticket 'gh-source) "/"))
-        (id (clasker-ticket-get-property ticket 'gh-id)))
-   (gh-issues-issue-update (gh-issues-api3)
-                           (car ticket-source)
-                           (cadr ticket-source)
-                           (number-to-string id)
-                           `(("state" . ,(if new-value "closed" "open"))))))
+;; (clasker-add-property-hook 'archived 'clasker-github-archive)
+;; (defmethod clasker-github-archive ((ticket clasker-github-ticket) _property new-value)
+;;   (let ((ticket-source (split-string (clasker-ticket-get-property ticket 'gh-source) "/"))
+;;         (id (clasker-ticket-get-property ticket 'gh-id)))
+;;    (gh-issues-issue-update (gh-issues-api3)
+;;                            (car ticket-source)
+;;                            (cadr ticket-source)
+;;                            (number-to-string id)
+;;                            `(("state" . ,(if new-value "closed" "open"))))))
 
 ;;; Experimental Magit support
 
