@@ -54,6 +54,7 @@
 ;;;       it refers to the ticket stored in the same file with that line number.
 ;;;
 ;;;
+;;;
 ;;; Two generic functions are provided to manipulate the properties of a ticket:
 ;;; `clasker-ticket-get-property' and `clasker-ticket-set-property'.
 ;;;
@@ -179,6 +180,7 @@ subclass to be displayed in a different way in the main clasker buffer")
       (clasker-ticket-set-property ticket (car prop) (cdr prop)))
     ticket))
 
+
 ;;; Load an individual ticket given by the identifier ID. It could modify
 ;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
 (defun clasker-load-id (id)
@@ -281,7 +283,7 @@ subclass to be displayed in a different way in the main clasker buffer")
         (goto-char (point-min))
         (forward-line (1- line))
         (delete-region (line-beginning-position) (line-end-position)))
-      (oset ticket filename clasker-ticket-file)
+      (oset ticket filename (expand-file-name clasker-ticket-file))
       (oset ticket line (line-number-at-pos))
       (let ((properties (oref ticket properties)))
         (insert
@@ -332,17 +334,15 @@ subclass to be displayed in a different way in the main clasker buffer")
           (newparent (clasker-resolve-id new-value)))
       (when oldparent
         (let ((siblings (remove ticket (clasker-ticket-childs oldparent))))
-          (clasker-ticket-set-property oldparent 'childs (mapcar 'clasker-ticket-id siblings))))
+          (clasker-ticket-set-property oldparent 'childs siblings)))
       (when newparent
         (let ((siblings (cons ticket (clasker-ticket-childs newparent))))
-          (clasker-ticket-set-property newparent 'childs (mapcar 'clasker-ticket-id siblings)))))))
+          (clasker-ticket-set-property newparent 'childs siblings))))))
 (clasker-add-property-hook 'parent 'clasker-update-childs)
 
 
 (defun clasker-ticket-childs (ticket)
-  (let ((refers (clasker-ticket-get-property ticket 'childs nil t)))
-    (when refers (mapcar 'clasker-resolve-id refers))))
-
+  (clasker-ticket-get-property ticket 'childs nil t))
 
 (defmethod clasker-ticket-class ((ticket clasker-ticket) value)
   (or (clasker-ticket-get-property ticket 'class value nil t) 'clasker-ticket))
@@ -372,6 +372,7 @@ subclass to be displayed in a different way in the main clasker buffer")
     (and timestamp (float-time (time-subtract (current-time) timestamp)))))
 
 
+
 ;;; Operations on text of tickets
 
 (defsubst clasker-ticket-at-point ()
@@ -395,18 +396,19 @@ subclass to be displayed in a different way in the main clasker buffer")
                 (or (not (get-text-property next-ticket-pos 'clasker-ticket))
                     (equal next-ticket-pos ticket)))
       (setq next-ticket-pos (funcall movement-func next-ticket-pos 'clasker-ticket)))
-    (goto-char (if next-ticket-pos next-ticket-pos point))))
+    (when next-ticket-pos
+      (goto-char next-ticket-pos))))
 
 (defun clasker-next-ticket (&optional arg)
   (interactive "p")
   (setq arg (or arg 1))
-  (dotimes (_i arg)
+  (dotimes (_i arg t)
     (clasker--following-single-ticket 'next-single-property-change)))
 
 (defun clasker-previous-ticket (&optional arg)
   (interactive "p")
   (setq arg (or arg 1))
-  (dotimes (_i arg)
+  (dotimes (_i arg t)
     (clasker--following-single-ticket 'previous-single-property-change)))
 
 
@@ -453,24 +455,39 @@ subclass to be displayed in a different way in the main clasker buffer")
       (delete-window window)
       value)))
 
-(defun clasker-shortcuts (l)
-  (let ((abbrevs (make-hash-table :test 'equal)))
-    (dolist (item l)
-      (let ((count 0))
-        (while (and (gethash (substring (car item) count  (+ count 1)) abbrevs)
-                    (gethash (capitalize (substring (car item) count  (+ count 1))) abbrevs))
-          (incf count))
-        (puthash (funcall (if (gethash (substring (car item) count  (+ count 1)) abbrevs)
-                              #'capitalize (lambda (x) x))
-                          (substring (car item) count (+ count 1)))
-                 (cdr item) abbrevs)))
-    abbrevs))
+;; (defun clasker-shortcuts (l)
+;;   (let ((abbrevs (make-hash-table :test 'equal)))
+;;     (dolist (item l)
+;;       (let ((count 0))
+;;         (while (and (gethash (substring (car item) count  (+ count 1)) abbrevs)
+;;                     (gethash (capitalize (substring (car item) count  (+ count 1))) abbrevs))
+;;           (incf count))
+;;         (puthash (funcall (if (gethash (substring (car item) count  (+ count 1)) abbrevs)
+;;                               #'capitalize (lambda (x) x))
+;;                           (substring (car item) count (+ count 1)))
+;;                  (cdr item) abbrevs)))
+;;     abbrevs))
 
 (defun clasker-action-archive (ticket)
   (clasker-ticket-set-property ticket 'archived t)
   (clasker-ticket-set-property ticket 'archive-timestamp (butlast (current-time)))
-  (clasker-save-ticket ticket)
-  (clasker-revert))
+  (clasker-save-ticket ticket))
+
+(defun clasker-ticket-actions (ticket)
+  (case (clasker-ticket-get-property ticket 'status)
+    (todo
+     '(("Start" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'started)))
+       ("Cancel" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'cancelled)))))
+    (cancelled
+     '(("Reopen" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'todo)))))
+    (started
+     '(("Complete" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'done)))
+       ("Cancel" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'cancelled)))))
+    (done
+     '(("Reopen" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'started)))))
+    (t
+     '(("Accept"  . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'todo)))
+       ("Discard" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'discard)))))))
 
 ;;;; Views
 
@@ -533,7 +550,7 @@ list of tickets to be shown in the current view.")
   (remove-if #'clasker-filtered-ticket-p ticket-list))
 
 (defvar clasker-filter-expire 300
-  "Seconds to mark a archived ticket as expired.")
+  "Number of seconds after an archived ticket become expired.")
 
 (defun clasker-expired-ticket-p (ticket)
   (and (clasker-ticket-archived-p ticket)
@@ -593,9 +610,10 @@ list of tickets to be shown in the current view.")
 (defmethod clasker-ticket-headline ((ticket clasker-ticket))
   (let* ((lines (split-string (clasker-ticket-description ticket) "\n"))
          (header (first lines)))
-    (if (< 1 (length lines))
-        (concat header " ...")
-      header)))
+    (with-output-to-string
+      (princ header)
+      (when (< 1 (length lines))
+        (princ " ...")))))
 
 (defun clasker-ticket-level (ticket)
   (let ((level 0))
@@ -605,21 +623,27 @@ list of tickets to be shown in the current view.")
       (setq level (1+ level)))
     level))
 
+(defun clasker-insert (string &rest properties)
+  (insert (apply 'propertize string properties)))
+
 (defun clasker-show-ticket (ticket)
   (let ((description (clasker-ticket-headline ticket))
         (timestring
          (let ((secs (clasker-ticket-ago ticket)))
            (if secs (clasker-format-seconds secs) ""))))
-    (insert (propertize (concat (make-string (* 3 (1+ (clasker-ticket-level ticket))) ?\s)
-                                description
-                                (make-string (max 0 (- (window-width)
-                                                       (* 3 (1+ (clasker-ticket-level ticket)))
-                                                       (length description)
-                                                       (length timestring) 3)) ?\s)
-                                (propertize timestring 'font-lock-face 'compilation-info)
-                                "\n")
-                        'clasker-ticket ticket
-                        'font-lock-face (if (clasker-ticket-archived-p ticket) 'shadow nil)))))
+    ;; Insert status and descripcion
+    (clasker-insert
+     (concat (make-string (* 3 (1+ (clasker-ticket-level ticket))) ?\s)
+             (upcase (symbol-name (or (clasker-ticket-get-property ticket 'status) 'new)))
+             " "
+             (propertize description 'clasker-ticket ticket))
+     'font-lock-face (if (clasker-ticket-archived-p ticket) 'shadow nil))
+
+    (clasker-insert
+     (concat (make-string (max 0 (- (window-width) (current-column) (length timestring) 2)) ?\s)
+             timestring
+             "\n")
+     'font-lock-face (if (clasker-ticket-archived-p ticket) 'shadow nil))))
 
 (defun clasker-show-tickets (list)
   (dolist (ticket list)
@@ -707,12 +731,18 @@ list of tickets to be shown in the current view.")
   (interactive)
   (let* ((clasker-inhibit-confirm t)
          (tickets (clasker-active-tickets))
-         (actions clasker-default-actions))
+         (actions
+          (let ((all-actions (mapcar 'clasker-ticket-actions tickets)))
+            (flet ((combine (actions1 actions2)
+                     (intersection actions1 actions2 :test 'equal)))
+              (reduce 'combine all-actions)))))
     (when (and actions tickets)
       (let ((action (clasker-read-action actions)))
         (when action
           (dolist (ticket tickets)
-            (funcall action ticket)))))))
+            (funcall action ticket)))))
+    (mapc 'clasker-save-ticket tickets)
+    (clasker-revert)))
 
 (defvar clasker-mode-map
   (let ((map (make-sparse-keymap)))
