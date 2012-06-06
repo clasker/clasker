@@ -1,5 +1,21 @@
+#+TITLE:     README.org
+#+AUTHOR:    Raimon Grau
+#+EMAIL:     raimonster@gmail.com
+#+DATE:      2012-06-07 Thu
+#+DESCRIPTION:
+#+KEYWORDS:
+#+LANGUAGE:  en
+#+OPTIONS:   H:3 num:t toc:t \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+LINK_UP:
+#+LINK_HOME:
+#+XSLT:
 
 * Clasker
+  *Clasker requires emacs 24.0 or higher*
 ** Overview
    Clasker is a task managing mode with automatization in mind. Clasker
    uses a special buffe, so text input is disabled by default. Let's say
@@ -64,5 +80,14 @@
 *** debug
 
 *** Pomodoro
-** Requirements
-   Emacs 24.0 or higher
+** Colaborate
+   This project is in a very early state, and we're mostly rethinking
+   it as it evolves. If you like this project and have some ideas to
+   contribute, we're more than open to discuss them.
+
+   - Use github's pull requests for code collaborations
+   - For suggestions and ideas, you can try #clasker at freenode
+     and/or github issues.
+
+** License
+   This Project is licensed under the GPLv3
