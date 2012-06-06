@@ -76,20 +76,20 @@
   :group 'applications)
 
 (defcustom clasker-directory "~/.clasker.d/"
-  "Clasker directory"
+  "Clasker directory."
   :group 'clasker)
 (unless(file-exists-p clasker-directory)
   (make-directory clasker-directory))
 
 (defcustom clasker-buffer-name "*Clasker*"
-  "Main Clasker buffer name"
+  "Main Clasker buffer name."
   :group 'clasker)
 
 
 ;;;; Tickets
 
 (defcustom clasker-ticket-file (concat clasker-directory "tickets")
-  "File where clasker file tickets are"
+  "File where clasker file tickets are."
   :type 'file
   :group 'clasker)
 
@@ -120,8 +120,8 @@
     (clasker-ticket-set-class ticket (class-of ticket))))
 
 (defun clasker-subclass-p (class1 class2)
-  "Return T if the symbol CLASS1 designates a subclass of the
-class whose name is CLASS2. Otherwise return NIL."
+  "Return T if the CLASS1 is a subclass of CLASS2.
+Otherwise return NIL."
   (and (class-p class1)
        (class-p class2)
        (child-of-class-p class1 class2)))
@@ -133,10 +133,12 @@ subclass to be displayed in a different way in the main clasker buffer")
 
 
 (defun clasker--quote-string (string)
+  "Quote a STRING and make it one line."
   (replace-regexp-in-string "\n" "\\\\n"
    (replace-regexp-in-string "\\\\" "\\\\\\\\" string)))
 
 (defun clasker--unquote-string (string)
+  "Inverse function of `clasker--quote-string'."
   (with-temp-buffer
     (insert string)
     (goto-char (point-min))
@@ -159,6 +161,7 @@ subclass to be displayed in a different way in the main clasker buffer")
   (make-hash-table :test 'equal :weakness 'value))
 
 (defun clasker-ticket-id (ticket)
+  "Return internal id of TICKET."
   (list (oref ticket filename) (oref ticket line)))
 
 (defun clasker-intern-ticket (id &optional class)

@@ -59,7 +59,10 @@
 *** Workflows
 
 *** Github
+    This plugin requires [[https://github.com/sigma/gh.el][gh.el]] which you can find in elpa.
 
 *** debug
 
 *** Pomodoro
+** Requirements
+   Emacs 24.0 or higher
