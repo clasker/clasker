@@ -1,0 +1,65 @@
+
+* Clasker
+** Overview
+   Clasker is a task managing mode with automatization in mind. Clasker
+   uses a special buffe, so text input is disabled by default. Let's say
+   clasker buffers are less 'open' than org-mode ones, but clasker makes
+   it easier to implement workflows over tasks.
+
+   The basic idea of clasker is that a ticket or task is just a set of
+   properties that is related to other tasks in a hierarchy.
+
+   Create new tickets with clasker-new-tickets (default binded to c), or
+   clasker-new-child-tickets (binded to C) to add new tickets as children
+   of ticket at point.
+
+   Navigate through the tickets with 'n' and 'p' for next and previous.
+
+   To edit a ticket, pres RET on a ticket, and a menu will appear with
+   the possible actions you can apply to that ticket. Default ones are
+   archive and edit.
+
+   There are plugins that can be activated to add all kinds of
+   functionality on top of this basic functionality.
+
+** Basic usage and bindings
+   - 'n' move to next task
+   - 'p' move to previous task
+   - 'c' create new top-level task
+   - 'C' create new task that's descendant of the task at cursor
+   - RET opens the actions menu
+
+*** Actions
+    Tasks will have different actions depending basically on 2
+    elements: The type of the task and the actual state of it.
+
+    After pressing RET on a task, clasker will show the activable
+    tasks for it. Some general ones are:
+    - *Archive*. Tags the task as archived, and will grey it out. After
+      a while from being archieved, a task disappears from the
+      listing.
+    - *Edit*. Opens a buffer to edit the description of the task. By
+      convention, first line is the heading, and is what will be
+      printed in the listing.
+
+** Marking tasks
+   With 'm' you can mark tickets and unmark them with 'u'. Not really
+   useful yet, but just in case you wanna use it for your plugins
+
+** Plugins
+   Clasker can be customized with plugins which add new actions for
+   tasks, or add new task types. With the core clasker distribution,
+   you'll find:
+
+*** Active task
+    Mark a task as active, and it will be highlighted in the
+    listing. If you enable this plugin, the globally accessible
+    clasker-active-ticket will be set to the current active task.
+
+*** Workflows
+
+*** Github
+
+*** debug
+
+*** Pomodoro

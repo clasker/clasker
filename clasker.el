@@ -734,7 +734,7 @@ list of tickets to be shown in the current view.")
           (let ((all-actions (mapcar 'clasker-ticket-actions tickets)))
             (flet ((combine (actions1 actions2)
                      (intersection actions1 actions2 :test 'equal)))
-              (reduce 'combine (or all-actions '(() ())))))))
+              (append clasker-default-actions (reduce 'combine (or all-actions '(() ()))))))))
     (when (and actions tickets)
       (let ((action (clasker-read-action actions)))
         (when action
