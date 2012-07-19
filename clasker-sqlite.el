@@ -71,12 +71,7 @@
 
 (defun clasker-sql-setup-schema ()
   (unless (clasker-sql-table-exist-p "Tickets")
-    (clasker-sql-nonquery "
-CREATE TABLE IF NOT EXISTS Tickets (
-        ID,
-        Property,
-        Value,
-         PRIMARY KEY (ID, Property))")))
+    (clasker-sql-nonquery "CREATE TABLE IF NOT EXISTS Tickets (Id, Property, Value, PRIMARY KEY (ID, Property))")))
 
 (provide 'clasker-sqlite)
 ;;; clasker-sqlite.el ends here
