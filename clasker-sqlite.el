@@ -38,9 +38,13 @@
 (defun clasker-sql-prepare (sql &rest args)
   (apply #'format sql
          (mapcar (lambda (x)
-                   (if (stringp x)
-                       (clasker-sql-quote-string x)
-                     x))
+                   (cond
+                    ((stringp x)
+                     (clasker-sql-quote-string x))
+                    ((symbolp x)
+                     (clasker-sql-quote-string (symbol-name x)))
+                    (t
+                     x)))
                  args)))
 
 (defun clasker-sql-nonquery (sql &rest args)
@@ -53,17 +57,26 @@
     (let ((file (expand-file-name clasker-sqlite-database)))
       (call-process clasker-sqlite-program nil t nil  "--csv" file
                     (apply #'clasker-sql-prepare sql args))
-      (pcsv-parse-buffer))))
-
+      (mapcar (lambda (line)
+                (mapcar (lambda (item)
+                          (condition-case nil
+                              (parse-integer item)
+                            (parse-error item)))
+                        line))
+              (pcsv-parse-buffer)))))
 
 (defun clasker-sql-table-exist-p (name)
   (let ((result (clasker-sql-query "SELECT * FROM sqlite_master WHERE type='table' AND name=%s" name)))
     (and result t)))
 
-(defun clasker-sql-setup-schema (sql)
+(defun clasker-sql-setup-schema ()
   (unless (clasker-sql-table-exist-p "Tickets")
-    (clasker-sql-nonquery "CREATE TABLE Tickets (ID, Property, Value);")))
-
+    (clasker-sql-nonquery "
+CREATE TABLE IF NOT EXISTS Tickets (
+        ID,
+        Property,
+        Value,
+         PRIMARY KEY (ID, Property))")))
 
 (provide 'clasker-sqlite)
 ;;; clasker-sqlite.el ends here
