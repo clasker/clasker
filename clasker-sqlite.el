@@ -22,6 +22,7 @@
 
 ;; 
 
+
 ;;; Code:
 
 (require 'pcsv)
@@ -59,9 +60,9 @@
                     (apply #'clasker-sql-prepare sql args))
       (mapcar (lambda (line)
                 (mapcar (lambda (item)
-                          (condition-case nil
-                              (parse-integer item)
-                            (parse-error item)))
+                          (if (and (stringp item) (string-match "^[[:digit:]]+\\(.[[:digit:]]+\\)?$" item))
+                              (string-to-number item)
+                            item))
                         line))
               (pcsv-parse-buffer)))))
 
