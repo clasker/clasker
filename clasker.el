@@ -50,10 +50,9 @@
 ;;;
 ;;;    PARENT
 ;;;
-;;;       Specify a hierarchy relationship with other ticket. It is an integer,
-;;;       it refers to the ticket stored in the same file with that line number.
-;;;
-;;;
+;;;       Specify a hierarchy relationship with other ticket. It is the ID of the
+;;;       parent of the ticket.
+
 ;;;
 ;;; Two generic functions are provided to manipulate the properties of a ticket:
 ;;; `clasker-ticket-get-property' and `clasker-ticket-set-property'.
@@ -70,45 +69,24 @@
 (require 'cl)
 (require 'eieio)
 
+(require 'clasker-sqlite)
+
 (defgroup clasker nil
   "Experimental task management."
   :prefix "clasker-"
   :group 'applications)
 
-(defcustom clasker-directory "~/.clasker.d/"
-  "Clasker directory."
-  :group 'clasker)
-(unless(file-exists-p clasker-directory)
-  (make-directory clasker-directory))
-
 (defcustom clasker-buffer-name "*Clasker*"
   "Main Clasker buffer name."
   :group 'clasker)
 
-
 ;;;; Tickets
-
-(defcustom clasker-ticket-file (concat clasker-directory "tickets")
-  "File where clasker file tickets are."
-  :type 'file
-  :group 'clasker)
 
 (defvar clasker-ticket-counter 0)
 (defclass clasker-ticket ()
-  (;; File and line where the ticket lives. They are used to save the changes to
-   ;; a ticket. If both are NIL, then the ticket is volatile and will not be
-   ;; saved across sessions.
-   (filename
-    :initarg :filename
-    :initform nil
-    :type (or string null))
-   (line
-    :initarg :line
-    :initform nil
-    :type (or integer null))
-   ;; UID is an unique identifier for the ticket for the current emacs session.
-   (uid
-    :initform (incf clasker-ticket-counter))
+  ((id
+    :initarg :id
+    :type integer)
    ;; Association list for this ticket.
    (properties
     :initarg :properties
@@ -131,82 +109,49 @@ Otherwise return NIL."
 This method is intended to be overwriten if you want your
 subclass to be displayed in a different way in the main clasker buffer")
 
-
-(defun clasker--quote-string (string)
-  "Quote a STRING and make it one line."
-  (replace-regexp-in-string "\n" "\\\\n"
-   (replace-regexp-in-string "\\\\" "\\\\\\\\" string)))
-
-(defun clasker--unquote-string (string)
-  "Inverse function of `clasker--quote-string'."
-  (with-temp-buffer
-    (insert string)
-    (goto-char (point-min))
-    (while (search-forward "\\" nil t)
-      (case (char-after)
-        (?n
-         (delete-char -1)
-         (delete-char 1)
-         (newline))
-        (t
-         (delete-char -1)
-         (forward-char))))
-    (buffer-string)))
-
-
-;;; This variable keeps a weak hash table which associates ticket identifiers as
-;;; (FILENAME lineno) with the ticket objects itself. It is useful to reload
-;;; tickets from disks preserving the eq-identity.
+;;; This variable keeps a weak hash table which associates ticket IDs with the
+;;; ticket objects itself. It is useful to reload tickets from disks preserving
+;;; the eq-identity.
 (defvar clasker-ticket-table
   (make-hash-table :test 'equal :weakness 'value))
 
 (defun clasker-ticket-id (ticket)
   "Return internal id of TICKET."
-  (list (oref ticket filename) (oref ticket line)))
+  (oref ticket id))
 
 (defun clasker-intern-ticket (id &optional class)
   (setq class (or class 'clasker-ticket))
   (unless (clasker-subclass-p class 'clasker-ticket)
     (error "unknown-clasker-ticket-class"))
   (or (gethash id clasker-ticket-table)
-      (puthash id (make-instance class) clasker-ticket-table)))
+      (puthash id (make-instance class :id id) clasker-ticket-table)))
 
-
-(defun clasker--parse-ticket-line (&optional id)
-  (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
-         (props (ignore-errors (read-from-whole-string (clasker--unquote-string line))))
-         (class (or (cdr (assq 'class props)) 'clasker-ticket))
-         (ticket (if id (clasker-intern-ticket id class) (make-instance class))))
-    (oset ticket filename (car id))
-    (oset ticket line (cadr id))
-    (dolist (prop props)
-      (clasker-ticket-set-property ticket (car prop) (cdr prop)))
-    ticket))
-
+;;; Intern a ticket with a newly allocated ID.
+(defun clasker-allocate-ticket (&optional class)
+  (let ((id (caar (clasker-sql-query "select max(id)+1 from Tickets"))))
+    (when (equal id nil)
+      (setq id 1))
+    ;; TODO: transactions
+    ;; KLUDGE: Add the property description to book the ID in the database.
+    (clasker-sql-nonquery "insert into Tickets values (%d, %s, '')" id 'description)
+    (clasker-intern-ticket id class)))
 
 ;;; Load an individual ticket given by the identifier ID. It could modify
 ;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
 (defun clasker-load-id (id)
-  (let* ((filename (or (car id) clasker-ticket-file))
-        (lineno (cadr id))
-        (id `(,(expand-file-name filename) ,lineno)))
-    (when (file-readable-p filename)
-      (with-temp-buffer
-        (insert-file-contents-literally filename)
-        (goto-char (point-min))
-        (forward-line (1- lineno))
-        (clasker--parse-ticket-line id)))))
+  (let ((ticket (clasker-intern-ticket id))
+        (result (clasker-sql-query "select Property, Value from Tickets where Id=%d" id))
+        (props nil))
+    (dolist (row result)
+      (push (cons (intern (car row)) (cadr row)) props))
+    (oset ticket properties props)
+    ticket))
 
 ;;; Resolve a ticket identifier. It is like `clasker-load-id', but it tries not
 ;;; to load the ticket from disk if it has been loaded already, so it does not
 ;;; modify ticket objects.
 (defun clasker-resolve-id (id)
-  (let ((full-id
-         (if (integerp id)
-             `(,(expand-file-name clasker-ticket-file) ,id)
-           id)))
-    (or (gethash full-id clasker-ticket-table)
-        (clasker-load-id full-id))))
+  (or (gethash id clasker-ticket-table) (clasker-load-id id)))
 
 
 ;;;; Properties
@@ -277,27 +222,12 @@ subclass to be displayed in a different way in the main clasker buffer")
   (eq ancestor child))
 
 (defmethod clasker-save-ticket ((ticket clasker-ticket))
-  (let ((line (oref ticket line)))
-    (with-temp-file clasker-ticket-file
-      (when (file-readable-p clasker-ticket-file)
-        (insert-file-contents-literally clasker-ticket-file))
-      (if (not line)
-          (goto-char (point-max))
-        (goto-char (point-min))
-        (forward-line (1- line))
-        (delete-region (line-beginning-position) (line-end-position)))
-      (oset ticket filename (expand-file-name clasker-ticket-file))
-      (oset ticket line (line-number-at-pos))
-      (let ((properties (oref ticket properties)))
-        (insert
-         (clasker--quote-string
-          (with-output-to-string
-            (princ "(")
-            (dolist (prop properties)
-              (unless (get (car prop) 'clasker-volatile)
-                (prin1 prop)))
-            (princ ")"))))
-        (unless line (insert "\n"))))))
+  (let ((id (oref ticket id))
+        (properties (oref ticket properties)))
+    ;; TODO: Sqlite transactions support. It requires to keep sqlite running,
+    ;; instead of run it once per query, probably.
+    (dolist (prop properties)
+      (clasker-sql-nonquery "INSERT OR REPLACE INTO Tickets VALUES (%d, %s, %s)" id (car prop) (cdr prop)))))
 
 
 (defmacro clasker-with-collect (&rest body)
@@ -312,18 +242,11 @@ subclass to be displayed in a different way in the main clasker buffer")
          ,@body)
        (cdr ,head))))
 
-
-(defun clasker-load-tickets (&optional filename)
-  (let ((filename (expand-file-name (or filename clasker-ticket-file))))
-    (when (file-readable-p filename)
-      (with-temp-buffer
-        (insert-file-contents filename)
-        (goto-char (point-min))
-        (clasker-with-collect
-          (while (< (point) (point-max))
-            (collect (clasker--parse-ticket-line `(,filename ,(line-number-at-pos))))
-            (forward-line)))))))
-
+(defun clasker-load-tickets ()
+  (let ((ids (mapcar #'car (clasker-sql-query "select distinct Id from Tickets order by Id")))
+        (tickets nil))
+    (dolist (id ids tickets)
+      (push (clasker-load-id id) tickets))))
 
 ;;; Ticket accessors
 
@@ -509,7 +432,7 @@ list of tickets to be shown in the current view.")
       (let ((ts1 (clasker-ticket-get-property t2 'timestamp))
             (ts2 (clasker-ticket-get-property t1 'timestamp)))
         (if (or (null ts1) (null ts2) (equal ts1 ts2))
-            (> (oref t2 uid) (oref t1 uid))
+            (> (oref t2 id) (oref t1 id))
           (time-less-p ts2 ts1))))
      ;; Reverse order for archived tickets
      ((and (clasker-ticket-archived-p t1) (clasker-ticket-archived-p t2))
@@ -518,7 +441,7 @@ list of tickets to be shown in the current view.")
           (let ((ts1 (clasker-ticket-get-property t1 'archive-timestamp))
                 (ts2 (clasker-ticket-get-property t2 'archive-timestamp)))
             (if (or (null ts1) (null ts2) (equal ts1 ts2))
-                (> (oref t2 uid) (oref t1 uid))
+                (> (oref t2 id) (oref t1 id))
               (time-less-p ts2 ts1)))))
      (t
       (clasker-ticket-archived-p t2))))
@@ -674,7 +597,7 @@ list of tickets to be shown in the current view.")
       (let ((description (read-string "Description (or RET to finish): " nil nil :no-more-input)))
         (if (eq description :no-more-input)
             (setf end t)
-          (setf ticket (make-instance 'clasker-ticket))
+          (setf ticket (clasker-allocate-ticket))
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
           (clasker-save-ticket ticket)
@@ -691,7 +614,7 @@ list of tickets to be shown in the current view.")
       (let ((description (read-string "Description (or RET to finish): " nil nil :no-more-input)))
         (if (eq description :no-more-input)
             (setf end t)
-          (setf ticket (make-instance 'clasker-ticket))
+          (setf ticket (clasker-allocate-ticket))
           (clasker-ticket-set-property ticket 'description description)
           (clasker-ticket-set-property ticket 'timestamp (butlast (current-time)))
           (clasker-ticket-set-property ticket 'parent parent-id)
