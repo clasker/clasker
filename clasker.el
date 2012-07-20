@@ -340,10 +340,6 @@ subclass to be displayed in a different way in the main clasker buffer")
 
 ;;;; Actions
 
-(defvar clasker-default-actions
-  '(("Archive" . clasker-action-archive)
-    ("Edit" . clasker-action-edit)))
-
 (defvar clasker-inhibit-confirm nil)
 (defun clasker-confirm (prompt)
   (or clasker-inhibit-confirm (yes-or-no-p prompt)))
@@ -395,25 +391,21 @@ subclass to be displayed in a different way in the main clasker buffer")
 ;;     abbrevs))
 
 (defun clasker-action-archive (ticket)
+  '(("Archive" . clasker--action-archive)))
+
+(defun clasker-action-edit (ticket)
+  '(("Edit" . clasker--action-edit)))
+
+(defun clasker--action-archive (ticket)
   (clasker-ticket-set-property ticket 'archived t)
   (clasker-ticket-set-property ticket 'archive-timestamp (butlast (current-time)))
   (clasker-save-ticket ticket))
 
 (defun clasker-ticket-actions (ticket)
-  (case (clasker-ticket-get-property ticket 'status)
-    (todo
-     '(("Start" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'started)))
-       ("Cancel" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'cancelled)))))
-    (cancelled
-     '(("Reopen" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'todo)))))
-    (started
-     '(("Complete" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'done)))
-       ("Cancel" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'cancelled)))))
-    (done
-     '(("Reopen" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'started)))))
-    (t
-     '(("Accept"  . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'todo)))
-       ("Discard" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'discard)))))))
+  (let ((actions (mapcar 'symbol-function
+                         (apropos-internal "clasker-action-[A-Z]+"))))
+    (mapcan (lambda (f) (funcall f ticket))
+            actions)))
 
 ;;;; Views
 
@@ -660,7 +652,7 @@ list of tickets to be shown in the current view.")
           (let ((all-actions (mapcar 'clasker-ticket-actions tickets)))
             (flet ((combine (actions1 actions2)
                      (intersection actions1 actions2 :test 'equal)))
-              (append clasker-default-actions (reduce 'combine (or all-actions '(() ()))))))))
+              (reduce 'combine (or all-actions '(() ())))))))
     (when (and actions tickets)
       (let ((action (clasker-read-action actions)))
         (when action
@@ -717,7 +709,7 @@ list of tickets to be shown in the current view.")
          (erase-buffer)
          ,@body))))
 
-(defun clasker-action-edit (ticket)
+(defun clasker--action-edit (ticket)
   (clasker-with-new-window "*Clasker Edit*" 10
     (clasker-edit-mode)
     (set (make-local-variable 'current-ticket) ticket)

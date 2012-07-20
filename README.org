@@ -50,6 +50,12 @@
       convention, first line is the heading, and is what will be
       printed in the listing.
 
+      You can create new actions defuning specially named defuns with
+      the pattern
+
+    (defun clasker-action-FOO (ticket)
+      '(("Label" . function-to-execute)))
+
 ** Marking tasks
    With 'm' you can mark tickets and unmark them with 'u'. Not really
    useful yet, but just in case you wanna use it for your plugins
