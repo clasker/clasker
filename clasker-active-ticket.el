@@ -83,10 +83,10 @@
         (put-text-property (point) (clasker-end-of-ticket) 'font-lock-face 'bold)))))
 
 (defun clasker-pomodoro-initialize ()
-  (add-hook 'clasker-display-hook 'clasker-highlight-active-ticket)
-  (add-to-list
-   'clasker-default-actions
-   '("Activate" . clasker-activate-ticket )))
+  (add-hook 'clasker-display-hook 'clasker-highlight-active-ticket))
+
+(defun clasker-action-ACTIVATE (ticket)
+  '("Activate" . clasker-activate-ticket))
 
 (clasker-pomodoro-initialize)
 
