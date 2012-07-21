@@ -39,5 +39,16 @@
      '(("Accept"  . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'todo)))
        ("Discard" . (lambda (ticket) (clasker-ticket-set-property ticket 'status 'discard)))))))
 
+
+(defadvice clasker-ticket-headline (after workflow-headline (ticket))
+  (setq ad-return-value
+        (concat
+         (upcase (symbol-name (or (clasker-ticket-get-property ticket 'status) 'new)))
+         " "
+         ad-return-value)))
+
+(ad-activate 'clasker-ticket-headline)
+
+
 (provide 'clasker-workflows)
 ;;; clasker-workflows.el ends here

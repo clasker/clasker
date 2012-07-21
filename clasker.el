@@ -402,10 +402,10 @@ subclass to be displayed in a different way in the main clasker buffer")
   (clasker-save-ticket ticket))
 
 (defun clasker-ticket-actions (ticket)
-  (let ((actions (mapcar 'symbol-function
-                         (apropos-internal "clasker-action-[A-Z]+"))))
-    (mapcan (lambda (f) (funcall f ticket))
-            actions)))
+  (let ((actions
+         (apropos-internal "clasker-action-[A-Z]+")))
+    (reduce 'append (mapcar (lambda (f) (funcall f ticket))
+                            actions))))
 
 ;;;; Views
 
@@ -552,8 +552,6 @@ list of tickets to be shown in the current view.")
     ;; Insert status and descripcion
     (clasker-insert
      (concat (make-string (* 3 (1+ (clasker-ticket-level ticket))) ?\s)
-             (upcase (symbol-name (or (clasker-ticket-get-property ticket 'status) 'new)))
-             " "
              (propertize description 'clasker-ticket ticket))
      'font-lock-face (if (clasker-ticket-archived-p ticket) 'shadow nil))
 
