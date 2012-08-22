@@ -86,7 +86,7 @@
   (add-hook 'clasker-display-hook 'clasker-highlight-active-ticket))
 
 (defun clasker-action-ACTIVATE (ticket)
-  '("Activate" . clasker-activate-ticket))
+  '(("Activate" . clasker-activate-ticket)))
 
 (clasker-pomodoro-initialize)
 

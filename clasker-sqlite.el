@@ -1,9 +1,9 @@
-;;; clasker-sqlite.el --- 
+;;; clasker-sqlite.el ---
 
 ;; Copyright (C) 2012  David Vázquez
 
 ;; Author: David Vázquez <davazp@gmail.com>
-;; Keywords: 
+;; Keywords:
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 
 ;;; Code:
@@ -34,7 +34,7 @@
 (defvar clasker-sqlite-database "~/.clasker.db")
 
 (defun clasker-sql-quote-string (string)
-  (concat "'" (replace-regexp-in-string "'" "\\\\'" string) "'"))
+  (concat "'" (replace-regexp-in-string "'" "''" string) "'"))
 
 (defun clasker-sql-prepare (sql &rest args)
   (apply #'format sql
