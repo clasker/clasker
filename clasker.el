@@ -129,7 +129,7 @@ subclass to be displayed in a different way in the main clasker buffer")
 ;;; Intern a ticket with a newly allocated ID.
 (defun clasker-allocate-ticket (&optional class)
   (let ((id (caar (clasker-sql-query "select max(id)+1 from Tickets"))))
-    (when (equal id nil)
+    (when (equal id "")
       (setq id 1))
     ;; TODO: transactions
     ;; KLUDGE: Add the property description to book the ID in the database.
@@ -139,13 +139,15 @@ subclass to be displayed in a different way in the main clasker buffer")
 ;;; Load an individual ticket given by the identifier ID. It could modify
 ;;; tickets objects, you usually prefer to use `clasker-resolve-id' instead.
 (defun clasker-load-id (id)
-  (let ((ticket (clasker-intern-ticket id))
-        (result (clasker-sql-query "select Property, Value from Tickets where Id=%d" id))
+  (let ((result (clasker-sql-query "select Property, Value from Tickets where Id=%d" id))
         (props nil))
     (dolist (row result)
       (push (cons (intern (car row)) (cadr row)) props))
-    (oset ticket properties props)
-    ticket))
+    (let ((ticket (clasker-intern-ticket id
+                                         (intern (or (cdr (assoc 'class props))
+                                                     "clasker-ticket")))))
+      (oset ticket properties props)
+      ticket)))
 
 ;;; Resolve a ticket identifier. It is like `clasker-load-id', but it tries not
 ;;; to load the ticket from disk if it has been loaded already, so it does not
@@ -390,10 +392,10 @@ subclass to be displayed in a different way in the main clasker buffer")
 ;;                  (cdr item) abbrevs)))
 ;;     abbrevs))
 
-(defun clasker-action-archive (ticket)
+(defun clasker-action-ARCHIVE (ticket)
   '(("Archive" . clasker--action-archive)))
 
-(defun clasker-action-edit (ticket)
+(defun clasker-action-EDIT (ticket)
   '(("Edit" . clasker--action-edit)))
 
 (defun clasker--action-archive (ticket)
