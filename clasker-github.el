@@ -78,7 +78,7 @@ in clasker, or archiving it will modify remote repo" )
 (defun clasker-github-issue-to-ticket (issue source)
   "Creates a clasker ticket from an instance of gh-issue from
 gh.el. Adding the extra properties needed for clasker."
-  (let ((ticket (make-instance 'clasker-github-ticket)))
+  (let ((ticket (clasker-allocate-ticket 'clasker-github-ticket)))
     (clasker-ticket-set-property
      ticket
      'description
@@ -100,12 +100,14 @@ gh.el. Adding the extra properties needed for clasker."
   "Import a list of issues from a user/project in github."
   (interactive "MRepository (user/project): ")
   (let* ((gh-api (gh-issues-api3))
+         (source source)
          (user/project source)
-         (response (apply #'gh-issues-issue-list gh-api  (split-string source "/"))))
+         (response (apply #'gh-issues-issue-list gh-api (split-string source "/"))))
     (gh-api-add-response-callback response
                                   (lambda (issues)
-                                    (clasker-github-save-tickets issues source)))))
-
+                                   (clasker-github-save-tickets issues source)
+                                   ;(clasker-github-save-tickets issues "kidd/readerly")
+                                    ))))
 
 (defun clasker--github-tickets ()
   "returns a hash table with all clasker-github-tickets. The keys
@@ -120,24 +122,32 @@ gh.el. Adding the extra properties needed for clasker."
 
 (defun clasker-github-save-tickets (issues source)
   "Saves all tickets that came in the same reply as clasker
-tickets. Creating new tickets or updating content in old ones."
+tickets. Creating new tickets or updating content in old ones.
+ALERT!: if there are [nil]: tickets. this function fails miserably bc
+clasker--github-tickets fails miserably"
   (interactive)
-  (let ((gh-tickets2 (clasker--github-tickets)))
+  (let ((gh-tickets (clasker--github-tickets)))
     (dolist (issue issues)
-      (let* ((gh-issue (clasker-github-issue-to-ticket issue source))
-             (gh-tickets (clasker--github-tickets))
+      (let* (
              (clasker-ticket (gethash (concatenate 'string source "/"
-                                                   (number-to-string (clasker-ticket-get-property gh-issue 'gh-id)))
+                                                   (number-to-string (oref issue number)))
                                       gh-tickets)))
-        (clasker-save-ticket
-         (if clasker-ticket
-             (clasker-github-update-ticket clasker-ticket gh-issue)
-           gh-issue)))))
+
+
+        (if clasker-ticket
+            (progn
+              (clasker-ticket-set-property clasker-ticket 'description
+                                           (concat (oref issue title) "\n"
+                                                   (replace-regexp-in-string "" ""
+                                                                             (or
+                                                                              (oref issue body)
+                                                                              ""))))
+              (clasker-save-ticket clasker-ticket))
+          (clasker-save-ticket (clasker-github-issue-to-ticket issue source))))))
   (clasker-revert))
 
 ;;; TODO: NIY
-(defmethod clasker-github-save-ticket-to-github ((ticket clasker-github-ticket))
-  )
+(defmethod clasker-github-save-ticket-to-github ((ticket clasker-github-ticket)))
 
 (defun gh-issues-api3 (&optional sync auth)
   (gh-issues-api "api" :sync sync :cache nil
@@ -172,13 +182,12 @@ description. Add more fields here if you care about more data."
 
  (defun clasker-github-set-description-on-magit-commit ()
    (when clasker-active-ticket
-     (let ((gh-id (clasker-ticket-get-property-in-hierarchy
+     (let ((gh-id (clasker-ticket-get-property
                        clasker-active-ticket 'gh-id) ))
        (if gh-id
            (clasker-github-magit-log-edit-append
             (concat "[#" (number-to-string
                           gh-id) "]"))))))
-
 
  (add-hook 'magit-log-edit-mode-hook 'clasker-github-set-description-on-magit-commit))
 
